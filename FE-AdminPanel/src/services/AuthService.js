@@ -1,10 +1,12 @@
 import axios from "axios";
 
 import firebase, { isFirebaseEnabled } from '@/firebaseConfig';
+import { Keys } from '@/config';
 import Router from '../router/index'
 
 const loginEvent = 'freshToken'
 const passwordLoginEndpoint = '/auth/login'
+const useFirebaseAuth = Keys.VUE_APP_AUTH_PROVIDER === 'firebase' && isFirebaseEnabled
 
 function getDeviceName() {
   if (!window.vm || !window.vm.$browserDetect) return 'web';
@@ -29,7 +31,7 @@ export default {
   isUserLoggedIn() {
     let isAuthenticated = false
 
-    if (isFirebaseEnabled) {
+    if (useFirebaseAuth) {
       const firebaseCurrentUser = firebase.auth().currentUser
 
       if (firebaseCurrentUser) isAuthenticated = true
@@ -56,7 +58,7 @@ export default {
     try {
       let response;
 
-      if (isFirebaseEnabled) {
+      if (useFirebaseAuth) {
         const result = await firebase.auth().signInWithEmailAndPassword(payload.email, payload.password);
         const token = await result.user.getIdToken(true);
 
@@ -96,7 +98,7 @@ export default {
   },
   async logout() {
 
-    if (isFirebaseEnabled) {
+    if (useFirebaseAuth) {
       const firebaseCurrentUser = firebase.auth().currentUser
 
       if (firebaseCurrentUser) {
