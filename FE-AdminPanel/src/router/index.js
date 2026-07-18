@@ -14,6 +14,30 @@ const routes = [
     name: 'dashboard',
     component: () => import('@/views/dashboard/Dashboard.vue'),
   },
+  {
+    path: '/driver/beranda',
+    name: 'driver-home',
+    component: () => import('@/views/driver/Home.vue'),
+    meta: { layout: 'driver', driverOnly: true },
+  },
+  {
+    path: '/driver/jadwal',
+    name: 'driver-schedule',
+    component: () => import('@/views/driver/Trips.vue'),
+    meta: { layout: 'driver', driverOnly: true, tripFilter: 'schedule' },
+  },
+  {
+    path: '/driver/perjalanan',
+    name: 'driver-active-trip',
+    component: () => import('@/views/driver/Trips.vue'),
+    meta: { layout: 'driver', driverOnly: true, tripFilter: 'active' },
+  },
+  {
+    path: '/driver/riwayat',
+    name: 'driver-history',
+    component: () => import('@/views/driver/Trips.vue'),
+    meta: { layout: 'driver', driverOnly: true, tripFilter: 'history' },
+  },
   //////////////////////////users////////////////////////////////
   //admins
   {
@@ -288,6 +312,10 @@ router.beforeEach((to, from, next) => {
     if (!isUserAuth) {
         return next("/login");
     }
+
+    const role = Number(localStorage.getItem('userRole'));
+    if (role === 2 && !to.meta.driverOnly) return next('/driver/beranda');
+    if (to.meta.driverOnly && role !== 2) return next('/dashboard');
 
     return next()
     // Specify the current path as the customState parameter, meaning it

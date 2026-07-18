@@ -28,6 +28,9 @@
 
         <!-- login form -->
         <v-card-text>
+          <v-alert v-if="loginError" type="error" dense dismissible @input="loginError = null">
+            {{ loginError }}
+          </v-alert>
           <v-form
           ref="form"
           v-model="valid"
@@ -79,6 +82,10 @@
             >
               Login
             </v-btn>
+            <div class="text-center mt-5">
+              Belum memiliki akun?
+              <router-link to="/register">Daftar sekarang</router-link>
+            </div>
           </v-form>
         </v-card-text>
       </v-card>
@@ -164,6 +171,7 @@ export default {
     return {
       systemName: Keys.VUE_APP_SYSTEM_NAME,
       valid: true,
+      loginError: null,
       submiting: false,
       emailRules: [
         v => !!v || 'E-mail is required',
@@ -184,13 +192,24 @@ export default {
         notify: this.$notify,
       };
       this.error = null;
+      this.loginError = null;
       try {
         this.submiting = true;
         const isLoggedIn = await AuthService.login(payload);
         this.submiting = false;
-        if(isLoggedIn)
+        if(isLoggedIn === true)
         {
-          this.$router.push(this.$router.currentRoute.query.to || '/')
+          const role = Number(localStorage.getItem('userRole'))
+          const destination = role === 2
+            ? '/driver/beranda'
+            : (this.$router.currentRoute.query.to || '/dashboard')
+
+          this.$router.push(destination).catch(error => {
+            if (error && error.name !== 'NavigationDuplicated') throw error
+          })
+        }
+        else if (isLoggedIn && isLoggedIn.message) {
+          this.loginError = isLoggedIn.message
         }
       } catch (error) {
         console.log(error);

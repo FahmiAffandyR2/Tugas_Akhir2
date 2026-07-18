@@ -137,10 +137,10 @@ Route::group(['prefix' => 'planned-trips'], function () {
 
   Route::get('/{id}', [Api\TripController::class, 'getPlannedTripDetails'])->middleware(['auth:sanctum']);
   //start or stop a planned trip
-  Route::post('/start-stop', [Api\TripController::class, 'startStopPlannedTrip'])->middleware(['auth:sanctum']);
+  Route::post('/start-stop', [Api\TripController::class, 'startStopPlannedTrip'])->middleware(['auth:sanctum', 'driver']);
 
   //set last position of the trip
-  Route::post('/set-last-position', [Api\TripController::class, 'setLastPosition'])->middleware(['auth:sanctum']);
+  Route::post('/set-last-position', [Api\TripController::class, 'setLastPosition'])->middleware(['auth:sanctum', 'driver']);
 
   //drop-off a passenger
   Route::post('/drop-off', [Api\TripController::class, 'dropOff'])->middleware(['auth:sanctum']);
@@ -211,7 +211,7 @@ Route::group(['prefix' => 'drivers'], function() {
   //get driver information
   Route::get('/get-driver-info', [Api\DriverController::class, 'getDriverInfo'])->middleware(['auth:sanctum']);
   //get driver trips
-  Route::get('/get-driver-trips', [Api\DriverController::class, 'getDriverTrips'])->middleware(['auth:sanctum']);
+  Route::get('/get-driver-trips', [Api\DriverController::class, 'getDriverTrips'])->middleware(['auth:sanctum', 'driver']);
   //wallet payments
   Route::get('/wallet-payments', [Api\DriverController::class, 'getWalletPayments'])->middleware(['auth:sanctum']);
   Route::get('/available', [Api\DriverController::class, 'getAvailableDrivers']);
@@ -242,6 +242,7 @@ Route::group(['prefix' => 'auth'], function () {
   Route::post('/reset-password', [Api\AuthController::class, 'resetPassword']);
   Route::post('/createCustomer', [Api\AuthController::class, 'createCustomer']);
   Route::post('/createDriver', [Api\AuthController::class, 'createDriver']);
+  Route::post('/register-driver', [Api\AuthController::class, 'registerDriver']);
 
   //verifyUser
   Route::post('/verify-user', [Api\AuthController::class, 'verifyUser'])->middleware(['auth:sanctum']);

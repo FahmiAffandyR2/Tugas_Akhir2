@@ -59,7 +59,12 @@ export default {
         const authUser = await this.$store.dispatch("auth/getAuthUser");
         if (authUser) {
           this.$store.dispatch("auth/setGuest", { value: "isNotGuest" });
-          this.$router.push("/dashboard");
+          const destination = Number(localStorage.getItem('userRole')) === 2
+            ? '/driver/beranda'
+            : '/dashboard';
+          this.$router.push(destination).catch(error => {
+            if (error && error.name !== 'NavigationDuplicated') throw error;
+          });
         } else {
           const error = Error(
             "Unable to fetch user after login, check your API settings."

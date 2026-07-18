@@ -187,6 +187,10 @@ class AuthController extends Controller
     }
     public function login(Request $request)
     {
+        $request->merge([
+            'email' => strtolower(trim((string) $request->email)),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string',
@@ -201,7 +205,21 @@ class AuthController extends Controller
             if (LaravelAuth::attempt($request->only('email', 'password'))) {
                 /** @var User $user */
                 $user = LaravelAuth::user();
-                $token = $this->createToken($user, $request->device_name ?? 'admin', ['admin']);
+
+                if (!in_array((int) $user->role, [0, 1, 2], true)) {
+                    LaravelAuth::logout();
+                    return response(['message' => 'Akun tidak memiliki role yang valid.'], 403);
+                }
+
+                if ((int) $user->role === 2 && (int) $user->status_id === 3) {
+                    LaravelAuth::logout();
+                    return response(['message' => 'Akun driver sedang ditangguhkan. Hubungi Super Admin.'], 403);
+                }
+
+                $ability = (int) $user->role === 0
+                    ? 'admin'
+                    : ((int) $user->role === 2 ? 'driver' : 'customer');
+                $token = $this->createToken($user, $request->device_name ?? 'web', [$ability]);
 
                 if (config('auth.must_verify_email') && !$user->hasVerifiedEmail()) {
                     return response([
@@ -223,7 +241,7 @@ class AuthController extends Controller
         }
 
         return response([
-            'message' => 'Invalid Email or password.'
+            'message' => 'Email atau password salah.'
         ], 401);
     }
 
@@ -241,6 +259,63 @@ class AuthController extends Controller
     public function createDriver(Request $request)
     {
         return $this->createCustomerDriver($request, 2);
+    }
+
+    /**
+     * Register a driver from the web PWA using email and password.
+     * The role and initial status are controlled by the server.
+     */
+    public function registerDriver(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'tel_number' => 'nullable|string|max:30',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $driver = User::create([
+                'name' => $request->name,
+                'email' => strtolower($request->email),
+                'password' => Hash::make($request->password),
+                'tel_number' => $request->tel_number,
+                'role' => 2,
+                'status_id' => 2,
+                'uid' => 'driver-web-' . (string) \Illuminate\Support\Str::uuid(),
+            ]);
+
+            // This application does not currently provide an email verification
+            // delivery flow for password-based driver registration.
+            $driver->email_verified_at = now();
+            $driver->save();
+            $this->storeAvatar($driver);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Registrasi berhasil. Silakan login sebagai driver.',
+                'user' => [
+                    'id' => $driver->id,
+                    'name' => $driver->name,
+                    'email' => $driver->email,
+                    'role' => (int) $driver->role,
+                    'status_id' => (int) $driver->status_id,
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Driver web registration failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'message' => 'Registrasi driver gagal. Silakan coba kembali.',
+            ], 500);
+        }
     }
 
     private function createCustomerDriver(Request $request, Int $role)

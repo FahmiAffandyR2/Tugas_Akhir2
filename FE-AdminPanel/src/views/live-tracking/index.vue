@@ -46,6 +46,10 @@
                     <v-icon size="25" class="mr-2">mdi-clock-time-four-outline</v-icon>
                     {{ element.started_at }}
                 </div>
+                <div class="m-1 my-1 ml-1" :class="hasPosition(element) ? 'success--text' : 'warning--text'">
+                    <v-icon size="22" class="mr-2" :color="hasPosition(element) ? 'success' : 'warning'">mdi-crosshairs-gps</v-icon>
+                    {{ hasPosition(element) ? 'GPS terhubung' : 'Menunggu lokasi GPS driver' }}
+                </div>
                 </div>
           </div>
           <div class="col-md-8" id="map">
@@ -122,15 +126,21 @@ export default {
       selectedItem: null,
       submiting: false,
       mode: null, //0: create, 1 edit
+      pollTimer: null,
     };
   },
   mounted() {
     this.center.lat = parseFloat(this.center.lat);
     this.center.lng = parseFloat(this.center.lng);
     this.fetchOnRouteTrips();
+    this.pollTimer = window.setInterval(this.refreshTripPositions, 10000);
+  },
+  beforeDestroy() {
+    if (this.pollTimer) window.clearInterval(this.pollTimer);
   },
   methods: {
     addBusIcon(on_route_trip) {
+        if (!this.hasPosition(on_route_trip)) return false;
         const position = {
           lat: parseFloat(on_route_trip.last_position_lat),
           lng: parseFloat(on_route_trip.last_position_lng),
@@ -146,6 +156,13 @@ export default {
         const image = "https://cdn-icons-png.flaticon.com/32/3471/3471521.png";
         marker.icon = image;
         this.markers.push(marker);
+        return true;
+    },
+    hasPosition(trip) {
+      if (!trip) return false;
+      const lat = parseFloat(trip.last_position_lat);
+      const lng = parseFloat(trip.last_position_lng);
+      return Number.isFinite(lat) && Number.isFinite(lng);
     },
     getTripInfoText(on_route_trip, speed = null) {
       let infoText = "";
@@ -160,6 +177,29 @@ export default {
         infoText += "<b>Speed:</b> " + speed + " km/h<br/>";
       }
       return infoText;
+    },
+    refreshTripPositions() {
+      axios.get('/planned-trips/on-route').then((response) => {
+        const running = response.data.running || [];
+        this.on_route_trips = running;
+        running.forEach(trip => {
+          if (!this.hasPosition(trip)) return;
+          let marker = this.markers.find(item => item.place_id === trip.channel);
+          if (!marker) {
+            this.addBusIcon(trip);
+            return;
+          }
+          marker.position = {
+            lat: parseFloat(trip.last_position_lat),
+            lng: parseFloat(trip.last_position_lng),
+          };
+          marker.infoText = this.getTripInfoText(trip);
+          if (this.selectedItem === trip.channel) this.center = marker.position;
+        });
+      }).catch(() => {
+        // The realtime listener remains active; avoid noisy alerts for a
+        // temporary polling failure.
+      });
     },
     //API Calls
     fetchOnRouteTrips() {
@@ -215,7 +255,14 @@ export default {
           lat: lat,
           lng: lng,
         };
-        let marker = this.markers[index];
+        let marker = this.markers.find(item => item.place_id === trip.channel);
+        if (!marker) {
+          trip.last_position_lat = lat;
+          trip.last_position_lng = lng;
+          this.addBusIcon(trip);
+          marker = this.markers.find(item => item.place_id === trip.channel);
+        }
+        if (!marker) return;
         marker.position = position;
         let infoText = this.getTripInfoText(trip, speed);
         marker.infoText = infoText;

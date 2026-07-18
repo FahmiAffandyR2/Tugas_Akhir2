@@ -3,7 +3,6 @@
     <v-main>
       <router-view></router-view>
     <vue-progress-bar></vue-progress-bar>
-    <notifications position="bottom right" />
     </v-main>
   </v-app>
 </template>

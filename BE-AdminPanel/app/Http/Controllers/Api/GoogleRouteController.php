@@ -44,9 +44,15 @@ class GoogleRouteController extends Controller
         }
 
 
-        $route = $this->googleRoutesService->computeRoutes($origin, $destination, $waypoints);
+        try {
+            $route = $this->googleRoutesService->computeRoutes($origin, $destination, $waypoints);
+            return response()->json($route);
+        } catch (\Throwable $e) {
+            Log::error('All route providers failed.', ['error' => $e->getMessage()]);
 
-        return response()->json($route);
+            return response()->json([
+                'message' => 'Jalur tidak dapat dihitung. Periksa koneksi internet backend dan coba lagi.',
+            ], 502);
+        }
     }
 }
-

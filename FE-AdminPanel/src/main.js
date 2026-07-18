@@ -52,3 +52,11 @@ const app = new Vue({
 }).$mount("#app");
 
 window.vm = app;
+
+if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(error => {
+      console.error('Service worker registration failed', error)
+    })
+  })
+}

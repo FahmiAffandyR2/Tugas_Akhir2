@@ -140,7 +140,7 @@ export default {
       driversTabs: [
         { idx: 0, title: "Active", icon: mdiAirplane },
         { idx: 1, title: "Suspended", icon: mdiMotionPause },
-        { idx: 2, title: "Under Review", icon: mdiAccountClock },
+        { idx: 2, title: "Pending / Under Review", icon: mdiAccountClock },
       ],
       customersTabs: [
         { idx: 0, title: "Active", icon: mdiAirplane },
@@ -233,7 +233,7 @@ export default {
           this.users = response.data;
           this.activeUsers = this.users.filter(user => user.status_id === 1);
           this.suspendedUsers = this.users.filter(user => user.status_id === 3);
-          this.underReviewUsers = this.users.filter(user => user.status_id === 4);
+          this.underReviewUsers = this.users.filter(user => user.status_id === 2 || user.status_id === 4);
         })
         .catch((error) => {
           this.$notify({

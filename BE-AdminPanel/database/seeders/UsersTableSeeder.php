@@ -32,5 +32,21 @@ class UsersTableSeeder extends Seeder
         if ($adminUser->wasRecentlyCreated) {
             $this->storeAvatar($adminUser);
         }
+
+        // Create driver account
+        $driverUser = User::firstOrCreate(
+            ['email' => 'driver@ezbus.com'],
+            [
+                'name' => 'Driver',
+                'password' => Hash::make('driver123'),
+                'role' => 2,
+                'status_id' => 1,
+                'uid' => "driver-local-001"
+            ]
+        );
+
+        if ($driverUser->wasRecentlyCreated) {
+            $this->storeAvatar($driverUser);
+        }
     }
 }

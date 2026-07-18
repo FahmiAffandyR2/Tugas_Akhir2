@@ -22,6 +22,10 @@ function storeToken(token) {
   axios.defaults.headers.common.Authorization = `Bearer ${token}`
 }
 
+function storeRole(user) {
+  localStorage.setItem('userRole', String(user && user.role))
+}
+
 
 export default {
   async login2(payload) {
@@ -68,32 +72,38 @@ export default {
         });
       } else {
         response = await axios.post(passwordLoginEndpoint, {
-          email: payload.email,
+          email: payload.email.trim().toLowerCase(),
           password: payload.password,
           device_name: getDeviceName(),
         });
       }
 
-      const isAdmin = response.data.admin
-      if (!isAdmin)
+      const role = Number(response.data.user_data && response.data.user_data.role)
+      if (role !== 0 && role !== 2)
       {
         const error = Error(
-          "Your account can not be used here! Only admin accounts."
+          "Akun ini tidak memiliki akses ke Admin Panel atau Driver PWA."
         );
         error.name = "Not admin";
         throw error;
       }
       storeToken(response.data.token)
+      storeRole(response.data.user_data)
       return true;
     } catch (error) {
       localStorage.setItem(loginEvent, null)
+      localStorage.removeItem('userRole')
+      const message = error.response && error.response.data && error.response.data.message
+        ? error.response.data.message
+        : error.message
       if (payload.notify) {
         payload.notify({
           title: 'Error',
-          text: error.message,
+          text: message,
           type: 'error'
         })
       }
+      return { success: false, message }
     }
   },
   async logout() {
@@ -107,6 +117,7 @@ export default {
     }
 
     localStorage.setItem(loginEvent, null)
+    localStorage.removeItem('userRole')
 
     // If user clicks on logout -> redirect
     Router.push('/login').catch(() => {})
@@ -126,6 +137,9 @@ export default {
     .post('/auth/reset-password', {
       email: payload.email,
     });
+  },
+  registerDriver(payload) {
+    return axios.post('/auth/register-driver', payload)
   },
   updatePassword(payload) {
     return authClient.put("/user/password", payload);

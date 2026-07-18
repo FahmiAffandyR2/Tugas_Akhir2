@@ -20,6 +20,8 @@ class UserResource extends JsonResource
           'email' => $this->email,
           'avatar' => $this->avatar,
           'isAdmin' => $this->isAdmin(),
+          'role' => (int) $this->role,
+          'isDriver' => (int) $this->role === 2,
           'emailVerified' => $this->email_verified_at,
         ];
     }

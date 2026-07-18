@@ -75,7 +75,7 @@
                                                             @place_changed="
                                                                 setPlace
                                                             "
-                                                            placeholder="Enter a location or click on map"
+                                                            placeholder="Cari lokasi"
                                                         />
                                                     </div>
                                                 </div>
@@ -188,7 +188,15 @@
                         </div>
                     </div>
                     <div class="col-md-8" id="map">
+                        <div class="d-flex align-center justify-space-between mb-3">
+                            <span class="text-subtitle-1 font-weight-medium">Pilih lokasi pada peta</span>
+                            <v-btn-toggle v-model="mapProvider" mandatory dense>
+                                <v-btn small value="leaflet">OpenStreetMap</v-btn>
+                                <v-btn small value="google">Google Maps</v-btn>
+                            </v-btn-toggle>
+                        </div>
                         <GoogleMapLoader
+                            v-if="mapProvider === 'google'"
                             :enabled="addStopOpen"
                             :center="center"
                             :selected="selectedItem"
@@ -199,6 +207,19 @@
                             :polylines="polyline"
                         >
                         </GoogleMapLoader>
+                        <LeafletMapLoader
+                            v-else
+                            :enabled="addStopOpen"
+                            :center="center"
+                            :selected="selectedItem"
+                            :zoom="zoom"
+                            :markers="markers"
+                            :polylines="polyline"
+                            @map-click="handleMapClick"
+                        />
+                        <v-alert v-if="!addStopOpen" type="info" outlined dense class="mt-3">
+                            Buka panel Add Stop agar lokasi pada peta dapat dipilih.
+                        </v-alert>
                     </div>
                 </div>
             </v-card-text>
@@ -208,18 +229,7 @@
 
 <script>
 import axios from "axios";
-
-$(window).scroll(function () {
-    $("#map")
-        .stop()
-        .animate(
-            {
-                marginTop: $(window).scrollTop() + "px",
-                marginLeft: $(window).scrollLeft() + "px",
-            },
-            "slow"
-        );
-});
+import LeafletMapLoader from "../../../components/LeafletMapLoader.vue";
 
 import GoogleMapLoader from "../../../components/GoogleMapLoader.vue";
 
@@ -230,6 +240,7 @@ import { Keys } from "/src/config.js";
 export default {
     components: {
         GoogleMapLoader,
+        LeafletMapLoader,
         draggable,
         VueElementLoading,
         Keys,
@@ -248,6 +259,7 @@ export default {
             markers: [],
             selectedIdx: null,
             currentPlace: null,
+            mapProvider: "leaflet",
             stops: [],
             center: {
                 lat: Keys.VUE_APP_ORIGIN_LAT,
@@ -445,6 +457,14 @@ export default {
         addMarker(in_stop = null) {
             console.log(in_stop);
             if (in_stop == null) {
+                if (!this.isValidPlace(this.currentPlace)) {
+                    this.$swal(
+                        "Lokasi belum dipilih",
+                        "Pilih salah satu saran alamat dari Google atau klik titik pada peta terlebih dahulu.",
+                        "warning"
+                    );
+                    return;
+                }
                 this.$swal
                     .fire({
                         title: "Enter stop name",
@@ -620,6 +640,9 @@ export default {
             }
         },
         getStopFromPlace(place, stop_name) {
+            if (!this.isValidPlace(place)) {
+                return null;
+            }
             let stop = {
                 name: stop_name,
                 place_id: place.place_id,
@@ -630,6 +653,16 @@ export default {
                 new: true,
             };
             return stop;
+        },
+        isValidPlace(place) {
+            return !!(
+                place &&
+                place.place_id &&
+                place.geometry &&
+                place.geometry.location &&
+                typeof place.geometry.location.lat === "function" &&
+                typeof place.geometry.location.lng === "function"
+            );
         },
         getStopId() {
             var max = -1;

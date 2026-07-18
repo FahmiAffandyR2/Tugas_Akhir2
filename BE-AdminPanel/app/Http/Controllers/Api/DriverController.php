@@ -424,13 +424,6 @@ class DriverController extends Controller
             return response()->json(['error' => ['User is not a driver']], 422);
         }
 
-        //get driver information
-        $driverInformation = $this->driverInformationRepository->findByWhere(['user_id' => $user_id])->first();
-        if(!$driverInformation)
-        {
-            return response()->json(['error' => ['Driver information does not exist']], 422);
-        }
-
         //get driver trips
         $driverTrips = $this->plannedTripRepository->findByWhere(
             ['driver_id' => $user_id],

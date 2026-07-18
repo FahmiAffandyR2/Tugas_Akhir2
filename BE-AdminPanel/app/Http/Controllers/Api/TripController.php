@@ -1262,8 +1262,16 @@ class TripController extends Controller
             $mode = $request->mode; // 1: start, 0: end
             $eventTime = Carbon::now();
             if ($mode == 1) {
+                if ($planned_trip->started_at || $planned_trip->ended_at) {
+                    DB::rollback();
+                    return response()->json(['message' => 'Trip has already been started or completed.'], 422);
+                }
                 $planned_trip->started_at = $eventTime;
             } else {
+                if (!$planned_trip->started_at || $planned_trip->ended_at) {
+                    DB::rollback();
+                    return response()->json(['message' => 'Only an active trip can be completed.'], 422);
+                }
                 $planned_trip->ended_at = $eventTime;
             }
             $planned_trip->save();
@@ -1335,11 +1343,14 @@ class TripController extends Controller
             return response()->json(["message" => "Unauthorized", "success" => false], 401);
         }
 
+        if (!$planned_trip->started_at || $planned_trip->ended_at) {
+            return response()->json(["message" => "Location can only be sent for an active trip", "success" => false], 422);
+        }
+
         $setting = $this->settingRepository->all()->first();
         $distance_to_stop_to_mark_arrived = $setting->distance_to_stop_to_mark_arrived;
 
-        //create a transaction
-        DB::beginTransaction();
+        $locationSaved = false;
         try {
             $lat = $request->lat;
             $lng = $request->lng;
@@ -1351,13 +1362,25 @@ class TripController extends Controller
             $planned_trip->last_position_lng = $lng;
 
             $planned_trip->save();
+            $locationSaved = true;
 
             $pos = array(
                 'speed' => $speed,
                 'lat' => $planned_trip->last_position_lat,
                 'lng' => $planned_trip->last_position_lng);
-            broadcast(new \App\Events\TripPositionUpdated($planned_trip->channel, json_encode($pos)));
+            try {
+                broadcast(new \App\Events\TripPositionUpdated($planned_trip->channel, json_encode($pos)));
+            } catch (\Throwable $broadcastError) {
+                Log::warning('GPS position saved but realtime broadcast failed.', [
+                    'planned_trip_id' => $planned_trip->id,
+                    'error' => $broadcastError->getMessage(),
+                ]);
+            }
             // Log::info("TripPositionUpdated on channel " . $planned_trip->channel);
+
+            // Stop/passenger processing is transactional, but a failure here
+            // must never roll back the GPS position that was already saved.
+            DB::beginTransaction();
 
             //loop through the plannedTripDetails stops
             $planned_trip_details = $planned_trip->plannedTripDetail;
@@ -1439,7 +1462,21 @@ class TripController extends Controller
                 ], 200);
             }
         } catch (\Exception $e) {
-            DB::rollback();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
+            Log::warning('GPS auxiliary processing failed.', [
+                'planned_trip_id' => $planned_trip_id,
+                'location_saved' => $locationSaved,
+                'error' => $e->getMessage(),
+            ]);
+            if ($locationSaved) {
+                return response()->json([
+                    'success' => true,
+                    'location_saved' => true,
+                    'warning' => 'Location saved; trip details will be processed on the next update.',
+                ], 200);
+            }
             return response()->json(['message' => $e->getMessage()], 422);
         }
     }

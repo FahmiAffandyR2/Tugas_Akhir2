@@ -15,7 +15,7 @@ class DriverMiddleware
      */
     public function handle($request, Closure $next)
     {
-        if (!$request->user()->role == 2) {
+        if ((int) $request->user()->role !== 2) {
             abort(403, 'Unauthorized action.');
         }
         return $next($request);
