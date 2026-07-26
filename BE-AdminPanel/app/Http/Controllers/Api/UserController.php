@@ -874,31 +874,55 @@ class UserController extends Controller
     //updateProfile
     public function updateProfile(Request $request)
     {
-        //validate the request
-        $this->validate($request, [
-            'tel_number' => 'string',
-            'address' => 'string',
-        ], [], []);
-
-        //convert tel number to integer
-        try{
-            $tel_number = intval($request->tel_number);
-        }
-        catch(\Exception $e)
-        {
-            return response()->json(['errors' => 'tel_number must be a number'], 422);
-        }
-        //get the user
         $user = $request->user();
-        $user_id = $user->id;
-        $user = $this->userRepository->findById($user_id);
 
-        $user->tel_number = $request->tel_number;
-        $user->address = $request->address;
-        $user->save();
+        $this->validate($request, [
+            'name' => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'tel_number' => 'nullable|string|max:30',
+            'current_password' => 'required_with:password|string',
+            'password' => 'nullable|string|min:8|confirmed',
+        ], [
+            'email.unique' => 'Email tersebut sudah digunakan akun lain.',
+            'current_password.required_with' => 'Password saat ini wajib diisi untuk mengganti password.',
+            'password.confirmed' => 'Konfirmasi password baru tidak sama.',
+            'password.min' => 'Password baru minimal 8 karakter.',
+        ]);
 
-        return response()->json(['success' => ['user updated successfully'],
-            'user' => $user]);
+        if ($request->filled('password') && !Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'errors' => ['current_password' => ['Password saat ini salah.']],
+            ], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $user->name = trim($request->name);
+            $user->email = strtolower(trim($request->email));
+            $user->tel_number = $request->tel_number ? trim($request->tel_number) : null;
+
+            if ($request->filled('password')) {
+                $user->password = Hash::make($request->password);
+            }
+
+            $user->save();
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Profil berhasil diperbarui.',
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'tel_number' => $user->tel_number,
+                    'role' => (int) $user->role,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Self profile update failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Profil gagal diperbarui. Silakan coba kembali.'], 500);
+        }
     }
 
     //revokeToken

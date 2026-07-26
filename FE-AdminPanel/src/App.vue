@@ -14,12 +14,14 @@ import { useRouter } from '@/utils'
 import LayoutBlank from '@/layouts/Blank.vue'
 import LayoutContent from '@/layouts/Content.vue'
 import LayoutDriver from '@/layouts/Driver.vue'
+import LayoutCustomer from '@/layouts/Customer.vue'
 
 export default {
   components: {
     LayoutBlank,
     LayoutContent,
     LayoutDriver,
+    LayoutCustomer,
   },
   setup() {
     const { route } = useRouter()
@@ -30,6 +32,7 @@ export default {
 
       if (route.value.meta.layout === 'blank') return 'layout-blank'
       if (route.value.meta.layout === 'driver') return 'layout-driver'
+      if (route.value.meta.layout === 'customer') return 'layout-customer'
 
       return 'layout-content'
     })

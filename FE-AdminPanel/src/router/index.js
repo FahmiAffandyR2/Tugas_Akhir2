@@ -10,6 +10,42 @@ const routes = [
     redirect: 'dashboard',
   },
   {
+    path: '/customer/login',
+    name: 'customer-login',
+    component: () => import('@/views/customer/Login.vue'),
+    meta: { layout: 'blank', customerGuest: true },
+  },
+  {
+    path: '/customer/register',
+    name: 'customer-register',
+    component: () => import('@/views/customer/Register.vue'),
+    meta: { layout: 'blank', customerGuest: true },
+  },
+  {
+    path: '/customer/beranda',
+    name: 'customer-home',
+    component: () => import('@/views/customer/Home.vue'),
+    meta: { layout: 'customer', customerOnly: true },
+  },
+  {
+    path: '/customer/pesan',
+    name: 'customer-booking',
+    component: () => import('@/views/customer/Booking.vue'),
+    meta: { layout: 'customer', customerOnly: true },
+  },
+  {
+    path: '/customer/pemesanan',
+    name: 'customer-bookings',
+    component: () => import('@/views/customer/Bookings.vue'),
+    meta: { layout: 'customer', customerOnly: true },
+  },
+  {
+    path: '/customer/profil',
+    name: 'customer-profile',
+    component: () => import('@/views/shared/Profile.vue'),
+    meta: { layout: 'customer', customerOnly: true },
+  },
+  {
     path: '/dashboard',
     name: 'dashboard',
     component: () => import('@/views/dashboard/Dashboard.vue'),
@@ -37,6 +73,12 @@ const routes = [
     name: 'driver-history',
     component: () => import('@/views/driver/Trips.vue'),
     meta: { layout: 'driver', driverOnly: true, tripFilter: 'history' },
+  },
+  {
+    path: '/driver/profil',
+    name: 'driver-profile',
+    component: () => import('@/views/shared/Profile.vue'),
+    meta: { layout: 'driver', driverOnly: true },
   },
   //////////////////////////users////////////////////////////////
   //admins
@@ -290,6 +332,8 @@ const plainRoutes = [
     "/terms",
     "/error-404",
     "/error-500",
+    "/customer/login",
+    "/customer/register",
 ];
 
 router.beforeEach((to, from, next) => {
@@ -301,8 +345,26 @@ router.beforeEach((to, from, next) => {
     }
     console.log(to_path);
 
-    let isUserAuth = auth.isUserLoggedIn();
     let isPlainRoute = plainRoutes.includes(to_path);
+
+    if (to.meta.customerGuest) {
+        if (auth.isUserLoggedIn('customer') && Number(localStorage.getItem('customerRole')) === 1) {
+            return next('/customer/beranda');
+        }
+        return next();
+    }
+
+    if (to.meta.customerOnly || to.path.startsWith('/customer/')) {
+        if (!auth.isUserLoggedIn('customer')) return next('/customer/login');
+        if (Number(localStorage.getItem('customerRole')) !== 1) {
+            localStorage.removeItem('customerToken');
+            localStorage.removeItem('customerRole');
+            return next('/customer/login');
+        }
+        return next();
+    }
+
+    let isUserAuth = auth.isUserLoggedIn('internal');
 
     //1 - if plain route, go to next
     if (isPlainRoute) {
@@ -313,9 +375,10 @@ router.beforeEach((to, from, next) => {
         return next("/login");
     }
 
-    const role = Number(localStorage.getItem('userRole'));
+    const role = Number(localStorage.getItem('internalRole') || localStorage.getItem('userRole'));
     if (role === 2 && !to.meta.driverOnly) return next('/driver/beranda');
     if (to.meta.driverOnly && role !== 2) return next('/dashboard');
+    if (!to.meta.driverOnly && role !== 0) return next('/driver/beranda');
 
     return next()
     // Specify the current path as the customState parameter, meaning it

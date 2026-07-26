@@ -428,12 +428,50 @@ class DriverController extends Controller
         $driverTrips = $this->plannedTripRepository->findByWhere(
             ['driver_id' => $user_id],
             ['*'],
-            ['plannedTripDetail.stop', 'bus', 'route'])->sortBy('planned_date')->values()->all();
+            ['plannedTripDetail.stop', 'bus', 'route'])->sortBy('planned_date')->values();
+
+        // Add navigation data only for trips assigned to the authenticated
+        // driver. This keeps the endpoint scoped while avoiding a second API
+        // request when an active trip starts tracking.
+        foreach ($driverTrips as $driverTrip) {
+            $routeStops = \App\Models\RouteStop::where('route_id', $driverTrip->route_id)
+                ->with('stop')
+                ->orderBy('order')
+                ->get();
+
+            $routePath = [];
+            foreach ($routeStops as $routeStop) {
+                $direction = \App\Models\RouteStopDirection::where('route_stop_id', $routeStop->id)
+                    ->where('current', 1)
+                    ->first();
+
+                if (!$direction || !$direction->overview_path) {
+                    continue;
+                }
+
+                $segment = json_decode($direction->overview_path, true);
+                if (is_array($segment)) {
+                    $routePath = array_merge($routePath, $segment);
+                }
+            }
+
+            $driverTrip->setAttribute('route_stops', $routeStops->map(function ($routeStop) {
+                return [
+                    'id' => $routeStop->stop->id,
+                    'order' => (int) $routeStop->order,
+                    'name' => $routeStop->stop->name,
+                    'address' => $routeStop->stop->address,
+                    'lat' => (float) $routeStop->stop->lat,
+                    'lng' => (float) $routeStop->stop->lng,
+                ];
+            })->values());
+            $driverTrip->setAttribute('route_path', $routePath);
+        }
 
         return response()->json(
             [
                 'success' => true,
-                'trips' => $driverTrips,
+                'trips' => $driverTrips->all(),
             ], 200);
     }
 

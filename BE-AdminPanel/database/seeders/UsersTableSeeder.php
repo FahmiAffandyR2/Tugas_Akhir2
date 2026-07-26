@@ -48,5 +48,21 @@ class UsersTableSeeder extends Seeder
         if ($driverUser->wasRecentlyCreated) {
             $this->storeAvatar($driverUser);
         }
+
+        // Create customer account for the external portal
+        $customerUser = User::firstOrCreate(
+            ['email' => 'customer@ezbus.com'],
+            [
+                'name' => 'Customer Demo',
+                'password' => Hash::make('customer123'),
+                'role' => 1,
+                'status_id' => 1,
+                'uid' => 'customer-local-001',
+            ]
+        );
+
+        if ($customerUser->wasRecentlyCreated) {
+            $this->storeAvatar($customerUser);
+        }
     }
 }

@@ -195,6 +195,7 @@ class AuthController extends Controller
             'email' => 'required|email',
             'password' => 'required|string',
             'device_name' => 'nullable|string',
+            'portal' => 'required|in:internal,customer',
         ]);
 
         if ($validator->fails()) {
@@ -206,20 +207,31 @@ class AuthController extends Controller
                 /** @var User $user */
                 $user = LaravelAuth::user();
 
-                if (!in_array((int) $user->role, [0, 1, 2], true)) {
+                $role = (int) $user->role;
+                if ($request->portal === 'customer' && $role !== 1) {
+                    LaravelAuth::logout();
+                    return response(['message' => 'Akun ini bukan akun customer. Silakan gunakan portal internal.'], 403);
+                }
+                if ($request->portal === 'internal' && !in_array($role, [0, 2], true)) {
+                    LaravelAuth::logout();
+                    return response(['message' => 'Akun customer harus masuk melalui portal customer.'], 403);
+                }
+
+                if (!in_array($role, [0, 1, 2], true)) {
                     LaravelAuth::logout();
                     return response(['message' => 'Akun tidak memiliki role yang valid.'], 403);
                 }
 
-                if ((int) $user->role === 2 && (int) $user->status_id === 3) {
+                if ($role === 2 && (int) $user->status_id === 3) {
                     LaravelAuth::logout();
                     return response(['message' => 'Akun driver sedang ditangguhkan. Hubungi Super Admin.'], 403);
                 }
 
-                $ability = (int) $user->role === 0
+                $ability = $role === 0
                     ? 'admin'
-                    : ((int) $user->role === 2 ? 'driver' : 'customer');
-                $token = $this->createToken($user, $request->device_name ?? 'web', [$ability]);
+                    : ($role === 2 ? 'driver' : 'customer');
+                $tokenName = $request->portal . '-' . ($request->device_name ?? 'web');
+                $token = $this->createToken($user, $tokenName, [$ability]);
 
                 if (config('auth.must_verify_email') && !$user->hasVerifiedEmail()) {
                     return response([
@@ -314,6 +326,70 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Registrasi driver gagal. Silakan coba kembali.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Register a customer for the separate customer portal.
+     * Customer role and active status are always assigned by the server.
+     */
+    public function registerCustomer(Request $request)
+    {
+        $request->merge([
+            'email' => strtolower(trim((string) $request->email)),
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'tel_number' => 'nullable|string|max:30',
+        ], [
+            'email.unique' => 'Email tersebut sudah terdaftar.',
+            'password.confirmed' => 'Konfirmasi password tidak sama.',
+            'password.min' => 'Password minimal 8 karakter.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $customer = User::create([
+                'name' => trim($request->name),
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'tel_number' => $request->tel_number,
+                'role' => 1,
+                'status_id' => 1,
+                'uid' => 'customer-web-' . (string) \Illuminate\Support\Str::uuid(),
+            ]);
+
+            // Password registration currently has no email delivery flow.
+            $customer->email_verified_at = now();
+            $customer->save();
+            $this->storeAvatar($customer);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Registrasi berhasil. Silakan masuk ke portal customer.',
+                'user' => [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'email' => $customer->email,
+                    'role' => (int) $customer->role,
+                    'status_id' => (int) $customer->status_id,
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Customer web registration failed', ['error' => $e->getMessage()]);
+
+            return response()->json([
+                'message' => 'Registrasi customer gagal. Silakan coba kembali.',
             ], 500);
         }
     }

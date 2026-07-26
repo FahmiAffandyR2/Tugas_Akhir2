@@ -52,6 +52,7 @@ export default {
       { title: 'Jadwal Saya', mobileTitle: 'Jadwal', icon: 'mdi-calendar-clock', to: '/driver/jadwal' },
       { title: 'Perjalanan Aktif', mobileTitle: 'Aktif', icon: 'mdi-map-marker-path', to: '/driver/perjalanan' },
       { title: 'Riwayat Perjalanan', mobileTitle: 'Riwayat', icon: 'mdi-history', to: '/driver/riwayat' },
+      { title: 'Profil Saya', mobileTitle: 'Profil', icon: 'mdi-account-outline', to: '/driver/profil' },
     ],
   }),
   computed: {

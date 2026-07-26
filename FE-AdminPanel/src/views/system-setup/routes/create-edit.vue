@@ -190,25 +190,9 @@
                     <div class="col-md-8" id="map">
                         <div class="d-flex align-center justify-space-between mb-3">
                             <span class="text-subtitle-1 font-weight-medium">Pilih lokasi pada peta</span>
-                            <v-btn-toggle v-model="mapProvider" mandatory dense>
-                                <v-btn small value="leaflet">OpenStreetMap</v-btn>
-                                <v-btn small value="google">Google Maps</v-btn>
-                            </v-btn-toggle>
+                            <v-chip small color="green lighten-5" text-color="green darken-2"><v-icon small left>mdi-map-outline</v-icon>Leaflet · OpenStreetMap</v-chip>
                         </div>
-                        <GoogleMapLoader
-                            v-if="mapProvider === 'google'"
-                            :enabled="addStopOpen"
-                            :center="center"
-                            :selected="selectedItem"
-                            :zoom="zoom"
-                            :apiKey="apiKey"
-                            :markers="markers"
-                            @map-click="handleMapClick"
-                            :polylines="polyline"
-                        >
-                        </GoogleMapLoader>
                         <LeafletMapLoader
-                            v-else
                             :enabled="addStopOpen"
                             :center="center"
                             :selected="selectedItem"
@@ -231,15 +215,12 @@
 import axios from "axios";
 import LeafletMapLoader from "../../../components/LeafletMapLoader.vue";
 
-import GoogleMapLoader from "../../../components/GoogleMapLoader.vue";
-
 import draggable from "vuedraggable";
 import VueElementLoading from "vue-element-loading";
 import { Keys } from "/src/config.js";
 
 export default {
     components: {
-        GoogleMapLoader,
         LeafletMapLoader,
         draggable,
         VueElementLoading,
@@ -248,7 +229,6 @@ export default {
 
     data() {
         return {
-            apiKey: Keys.GOOGLE_MAPS_API_KEY,
             descriptionLimit: 60,
             entries: [],
             isSearching: false,
@@ -259,7 +239,6 @@ export default {
             markers: [],
             selectedIdx: null,
             currentPlace: null,
-            mapProvider: "leaflet",
             stops: [],
             center: {
                 lat: Keys.VUE_APP_ORIGIN_LAT,

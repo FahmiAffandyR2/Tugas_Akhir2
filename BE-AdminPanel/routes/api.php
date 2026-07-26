@@ -243,6 +243,7 @@ Route::group(['prefix' => 'auth'], function () {
   Route::post('/createCustomer', [Api\AuthController::class, 'createCustomer']);
   Route::post('/createDriver', [Api\AuthController::class, 'createDriver']);
   Route::post('/register-driver', [Api\AuthController::class, 'registerDriver']);
+  Route::post('/register-customer', [Api\AuthController::class, 'registerCustomer']);
 
   //verifyUser
   Route::post('/verify-user', [Api\AuthController::class, 'verifyUser'])->middleware(['auth:sanctum']);

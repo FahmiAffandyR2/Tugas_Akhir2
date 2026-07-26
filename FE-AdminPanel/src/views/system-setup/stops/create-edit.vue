@@ -74,15 +74,14 @@
               </v-row>
             </v-col>
             <v-col cols="12" md="8">
-              <GoogleMapLoader
+              <LeafletMapLoader
                 :enabled="true"
                 :center="center"
                 :zoom="zoom"
-                :apiKey="apiKey"
                 :markers="markers"
                 @map-click="handleMapClick"
               >
-              </GoogleMapLoader>
+              </LeafletMapLoader>
             </v-col>
           </v-row>
         </v-form>
@@ -92,7 +91,7 @@
 </template>
 
 <script>
-import GoogleMapLoader from "../../../components/GoogleMapLoader.vue";
+import LeafletMapLoader from "../../../components/LeafletMapLoader.vue";
 
 import draggable from "vuedraggable";
 import VueElementLoading from "vue-element-loading";
@@ -101,7 +100,7 @@ import {Keys} from '/src/config.js'
 
 export default {
   components: {
-    GoogleMapLoader,
+    LeafletMapLoader,
     draggable,
     VueElementLoading,
     Keys
@@ -109,7 +108,6 @@ export default {
 
   data() {
     return {
-      apiKey: Keys.GOOGLE_MAPS_API_KEY,
       valid: true,
       nameRules: [(v) => !!v || ""],
       stop_id: null,

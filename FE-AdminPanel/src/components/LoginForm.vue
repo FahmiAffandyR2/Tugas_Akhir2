@@ -52,6 +52,7 @@ export default {
       const payload = {
         email: this.email,
         password: this.password,
+        portal: 'internal',
       };
       this.error = null;
       try {

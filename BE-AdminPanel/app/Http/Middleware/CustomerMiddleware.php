@@ -15,7 +15,7 @@ class CustomerMiddleware
      */
     public function handle($request, Closure $next)
     {
-        if (!$request->user()->role == 1) {
+        if ((int) $request->user()->role !== 1) {
             abort(403, 'Unauthorized action.');
         }
         return $next($request);

@@ -4,12 +4,11 @@
     <v-card>
       <!-- Page Heading -->
       <v-card-title>
-        <span class="me-3">On-Route Trips</span>
+        <span class="me-3">Live Tracking Perjalanan</span>
         <v-spacer></v-spacer>
-        <v-radio-group v-model="mapProvider" row dense hide-details class="mt-0 pt-0">
-          <v-radio label="Google Maps" value="google"></v-radio>
-          <v-radio label="Leaflet" value="leaflet"></v-radio>
-        </v-radio-group>
+        <v-chip small color="green lighten-5" text-color="green darken-2">
+          <v-icon small left>mdi-map-outline</v-icon>Leaflet · OpenStreetMap
+        </v-chip>
         <!-- <v-btn depressed color="secondary" @click="$router.go(-1)" class="mx-1">
           Back
           <v-icon right dark> mdi-keyboard-return </v-icon>
@@ -53,19 +52,7 @@
                 </div>
           </div>
           <div class="col-md-8" id="map">
-            <GoogleMapLoader
-              v-if="mapProvider === 'google'"
-              :enabled="false"
-              :center="center"
-              :selected="selectedItem"
-              :zoom="zoom"
-              :apiKey="apiKey"
-              :markers="markers"
-              :polylines="polyline"
-            >
-            </GoogleMapLoader>
             <LeafletMapLoader
-              v-else
               :enabled="false"
               :center="center"
               :selected="selectedItem"
@@ -94,7 +81,6 @@
 //     );
 // });
 
-import GoogleMapLoader from "../../components/GoogleMapLoader.vue";
 import LeafletMapLoader from "../../components/LeafletMapLoader.vue";
 
 import VueElementLoading from "vue-element-loading";
@@ -102,7 +88,6 @@ import {Keys} from '/src/config.js'
 
 export default {
   components: {
-    GoogleMapLoader,
     LeafletMapLoader,
     VueElementLoading,
     Keys
@@ -110,8 +95,6 @@ export default {
 
   data() {
     return {
-      apiKey: Keys.GOOGLE_MAPS_API_KEY,
-      mapProvider: "google",
       markers: [],
       selectedIdx: null,
       currentPlace: null,
@@ -127,6 +110,7 @@ export default {
       submiting: false,
       mode: null, //0: create, 1 edit
       pollTimer: null,
+      realtimeAvailable: false,
     };
   },
   mounted() {
@@ -134,6 +118,7 @@ export default {
     this.center.lng = parseFloat(this.center.lng);
     this.fetchOnRouteTrips();
     this.pollTimer = window.setInterval(this.refreshTripPositions, 10000);
+    this.realtimeAvailable = Boolean(window.Echo && typeof window.Echo.channel === 'function');
   },
   beforeDestroy() {
     if (this.pollTimer) window.clearInterval(this.pollTimer);
@@ -214,27 +199,28 @@ export default {
           for (let index = 0; index < this.on_route_trips.length; index++) {
              this.addBusIcon(this.on_route_trips[index]);
             }
-            this.listenToChannels();
+            if (this.realtimeAvailable) this.listenToChannels();
           }
         })
         .catch((error) => {
           this.submiting = false;
+          const message = error.response && error.response.data && error.response.data.message;
           this.$notify({
             title: "Error",
-            text: "Error fetching on_route_trips of this route",
+            text: message || "Data live tracking tidak dapat dimuat.",
             type: "error",
           });
           console.log(error);
-          this.$router.go(-1);
-          //this.$swal("Error", error.response.data.message, "error");
         });
     },
     listenToChannels() {
+      if (!this.realtimeAvailable) return;
       for (let index = 0; index < this.on_route_trips.length; index++) {
         this.listenToChannel(index, this.on_route_trips[index]);
       }
     },
     listenToChannel(index, trip) {
+      if (!window.Echo || typeof window.Echo.channel !== 'function') return;
       window.Echo.channel(trip.channel).listen("TripPositionUpdated",
       (e) => {
         if (this.selectedItem == trip.channel)

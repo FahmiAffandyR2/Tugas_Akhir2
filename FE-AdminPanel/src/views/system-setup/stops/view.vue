@@ -31,15 +31,14 @@
                 </div>
           </div>
           <div class="col-md-8" id="map">
-            <GoogleMapLoader
+            <LeafletMapLoader
               :enabled="false"
               :center="center"
               :selected="selectedItem"
               :zoom="zoom"
-              :apiKey="apiKey"
               :markers="markers"
             >
-            </GoogleMapLoader>
+            </LeafletMapLoader>
           </div>
         </div>
       </v-card-text>
@@ -49,18 +48,17 @@
 
 <script>
 
-import GoogleMapLoader from "../../../components/GoogleMapLoader.vue";
+import LeafletMapLoader from "../../../components/LeafletMapLoader.vue";
 import {Keys} from '/src/config.js'
 
 export default {
   components: {
-    GoogleMapLoader,
+    LeafletMapLoader,
     Keys
   },
 
   data() {
     return {
-      apiKey: Keys.GOOGLE_MAPS_API_KEY,
       stop_id: null,
       markers: [],
       selectedIdx: null,

@@ -50,16 +50,15 @@
                 </div>
           </div>
           <div class="col-md-8" id="map">
-            <GoogleMapLoader
+            <LeafletMapLoader
               :enabled="false"
               :center="center"
               :selected="selectedItem"
               :zoom="zoom"
-              :apiKey="apiKey"
               :markers="markers"
               :polylines="polyline"
             >
-            </GoogleMapLoader>
+            </LeafletMapLoader>
           </div>
         </div>
       </v-card-text>
@@ -68,33 +67,20 @@
 </template>
 
 <script>
-$(window).scroll(function () {
-  $("#map")
-    .stop()
-    .animate(
-      {
-        marginTop: $(window).scrollTop() + "px",
-        marginLeft: $(window).scrollLeft() + "px",
-      },
-      "slow"
-    );
-});
-
-import GoogleMapLoader from "../../../components/GoogleMapLoader.vue";
+import LeafletMapLoader from "../../../components/LeafletMapLoader.vue";
 
 import VueElementLoading from "vue-element-loading";
 import {Keys} from '/src/config.js'
 
 export default {
   components: {
-    GoogleMapLoader,
+    LeafletMapLoader,
     VueElementLoading,
     Keys
   },
 
   data() {
     return {
-      apiKey: Keys.GOOGLE_MAPS_API_KEY,
       route_name: null,
       route_id: null,
       markers: [],

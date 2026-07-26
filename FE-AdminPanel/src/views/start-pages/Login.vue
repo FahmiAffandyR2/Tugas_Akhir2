@@ -83,8 +83,12 @@
               Login
             </v-btn>
             <div class="text-center mt-5">
-              Belum memiliki akun?
+              Belum memiliki akun driver?
               <router-link to="/register">Daftar sekarang</router-link>
+            </div>
+            <div class="text-center mt-3">
+              Anda customer?
+              <router-link to="/customer/login">Masuk ke portal customer</router-link>
             </div>
           </v-form>
         </v-card-text>
@@ -190,6 +194,7 @@ export default {
         email: this.email,
         password: this.password,
         notify: this.$notify,
+        portal: 'internal',
       };
       this.error = null;
       this.loginError = null;
@@ -199,7 +204,7 @@ export default {
         this.submiting = false;
         if(isLoggedIn === true)
         {
-          const role = Number(localStorage.getItem('userRole'))
+          const role = Number(localStorage.getItem('internalRole') || localStorage.getItem('userRole'))
           const destination = role === 2
             ? '/driver/beranda'
             : (this.$router.currentRoute.query.to || '/dashboard')
