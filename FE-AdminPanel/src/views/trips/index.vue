@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title>
         <v-icon color="primary"> mdi-bus-clock </v-icon>
-        <span class="pl-2">Trips</span>
+        <span class="pl-2">Jadwal Perjalanan</span>
         <v-spacer></v-spacer>
         <create-button @create="createTrip"></create-button>
         <activation-tool-tip model="trips"></activation-tool-tip>
@@ -76,9 +76,9 @@ export default {
       isLoading: false,
       search: "",
       tabs: [
-        { idx: 0, title: "Active", icon: mdiAirplane },
-        { idx: 1, title: "Suspended", icon: mdiMotionPause },
-        { idx: 2, title: "Trashed", icon: mdiTrashCan },
+        { idx: 0, title: "Jadwal Aktif", icon: mdiAirplane },
+        { idx: 1, title: "Ditangguhkan", icon: mdiMotionPause },
+        { idx: 2, title: "Dinonaktifkan", icon: mdiTrashCan },
       ],
       active_tab: null,
       statuses: [

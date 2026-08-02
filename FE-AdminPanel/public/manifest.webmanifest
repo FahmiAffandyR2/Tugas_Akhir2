@@ -1,13 +1,27 @@
 {
-  "name": "Driver PWA",
-  "short_name": "Driver",
-  "description": "Jadwal, perjalanan, dan pelacakan lokasi driver",
-  "start_url": "/driver/beranda",
+  "name": "EZBus Admin Panel",
+  "short_name": "EZBus",
+  "description": "Aplikasi manajemen EZBus untuk admin, driver, dan customer",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#f4f5fa",
   "theme_color": "#9155fd",
+  "categories": ["business", "navigation", "travel"],
   "icons": [
+    {
+      "src": "/icons/ezbus-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/ezbus-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
     {
       "src": "/driver-icon.svg",
       "sizes": "any",

@@ -24,7 +24,7 @@ class BusController extends Controller
     public function index()
     {
         //get all buses
-        return response()->json($this->busRepository->all(['*'], ['driver']), 200);
+        return response()->json($this->busRepository->all(['*'], ['driver', 'depot']), 200);
     }
 
     public function getBus($bus_id)
@@ -42,6 +42,7 @@ class BusController extends Controller
             'bus.license' => 'required|string',
             'bus.capacity' => 'required|integer',
             'bus.seat_config' => 'required',
+            'bus.depot_id' => 'nullable|integer|exists:fleet_depots,id',
         ], [], []);
 
         $update = false;

@@ -27,7 +27,9 @@ class AuthServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         ResetPassword::createUrlUsing(function ($user, string $token) {
-          return env('SPA_URL') . '/reset-password?token=' . $token;
+          $spaUrl = rtrim(env('SPA_URL', config('app.url')), '/');
+
+          return $spaUrl . '/reset-password?token=' . $token . '&email=' . urlencode($user->email);
         });
     }
 }

@@ -53,7 +53,7 @@
       <small class="text-muted">{{ item.ended_at | moment("LT") }}</small>
     </template>
     <template v-slot:item.actions="{ item }">
-      <v-btn v-if="showNotification && item.reservations_count >0" depressed small density="compact" color="info"
+      <v-btn v-if="showNotification && item.booking_count > 0" depressed small density="compact" color="info"
       :icon="true"
       @click="sendNotification(item)">
         <v-icon dark> mdi-bell </v-icon>
@@ -95,7 +95,7 @@ export default {
         { text: "Route", value: "trip.route.name"},
         { text: "Planned Start", value: "planned_start_date_time" },
         { text: "Planned End", value: "planned_end_date_time" },
-        { text: "Reservations", value: "reservations_count" },
+        { text: "Booking", value: "booking_count" },
         { text: " ", value: "actions", sortable: false},
       ],
     };

@@ -197,19 +197,29 @@ class TripController extends Controller
     private function getAllPlannedTrips($mode)
     {
         //get all planned trips
-        $plannedTrips = $this->plannedTripRepository->allWhere(['*'], ['trip', 'trip.route', 'driver', 'bus', 'reservations']);
+        $plannedTrips = $this->plannedTripRepository->allWhere(['*'], ['trip', 'trip.route', 'driver', 'bus', 'reservations', 'charterBooking.customer']);
 
         $upcomingTrips = [];
         $runningTrips = [];
         $completedTrips = [];
 
         foreach ($plannedTrips as $plannedTrip) {
-            $plannedTrip->reservations_count = count($plannedTrip->reservations);
-            $plannedStartTime = new Carbon($plannedTrip->plannedTripDetail[0]->planned_timestamp);
+            $bookingCount = $plannedTrip->charterBooking
+                ? (int) $plannedTrip->charterBooking->passenger_count
+                : count($plannedTrip->reservations);
+
+            $plannedTrip->booking_count = $bookingCount;
+            $plannedTrip->reservations_count = $bookingCount;
+            $details = $plannedTrip->plannedTripDetail;
+            $plannedStartTime = count($details)
+                ? new Carbon($details[0]->planned_timestamp)
+                : new Carbon(optional($plannedTrip->trip)->first_stop_time ?: '00:00:00');
             $plannedTrip->planned_start_date_time = $plannedTrip->planned_date . ' ' . $plannedStartTime->hour . ':' . $plannedStartTime->minute . ':' . $plannedStartTime->second;
 
             //end time
-            $plannedEndTime = new Carbon($plannedTrip->plannedTripDetail[count($plannedTrip->plannedTripDetail) - 1]->planned_timestamp);
+            $plannedEndTime = count($details)
+                ? new Carbon($details[count($details) - 1]->planned_timestamp)
+                : new Carbon(optional($plannedTrip->trip)->last_stop_time ?: optional($plannedTrip->trip)->first_stop_time ?: '23:59:59');
             $plannedTrip->planned_end_date_time = $plannedTrip->planned_date . ' ' . $plannedEndTime->hour . ':' . $plannedEndTime->minute . ':' . $plannedEndTime->second;
 
             if ($plannedTrip->started_at == null) {
@@ -1275,6 +1285,10 @@ class TripController extends Controller
                 $planned_trip->ended_at = $eventTime;
             }
             $planned_trip->save();
+            if ($mode == 0) {
+                $charterBooking = \App\Models\CharterBooking::where('operational_planned_trip_id', $planned_trip->id)->first();
+                if ($charterBooking) $charterBooking->update(['status' => 'completed']);
+            }
             if ($mode == 1)
             {
                 // get all reservations for the planned_trip_id with ride_status = 0 or 1

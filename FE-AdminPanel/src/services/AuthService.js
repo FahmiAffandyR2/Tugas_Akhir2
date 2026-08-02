@@ -8,10 +8,10 @@ const passwordLoginEndpoint = '/auth/login'
 const useFirebaseAuth = Keys.VUE_APP_AUTH_PROVIDER === 'firebase' && isFirebaseEnabled
 
 function getDeviceName() {
-  if (!window.vm || !window.vm.$browserDetect) return 'web';
+  if (!window.vm || !window.vm.$browserDetect || !window.vm.$browserDetect.meta) return 'web';
 
   const { name, version } = window.vm.$browserDetect.meta;
-  return `${name}- v${version}`;
+  return `${name || 'browser'}- v${version || 'unknown'}`;
 }
 
 function tokenKey(portal) {
@@ -20,6 +20,10 @@ function tokenKey(portal) {
 
 function roleKey(portal) {
   return portal === 'customer' ? 'customerRole' : 'internalRole'
+}
+
+function portalForRole(role) {
+  return Number(role) === 1 ? 'customer' : 'internal'
 }
 
 function storeToken(token, portal) {
@@ -32,6 +36,18 @@ function storeToken(token, portal) {
 function storeRole(user, portal) {
   localStorage.setItem(roleKey(portal), String(user && user.role))
   if (portal === 'internal') localStorage.setItem('userRole', String(user && user.role))
+}
+
+function clearPortalSession(portal) {
+  localStorage.removeItem(tokenKey(portal))
+  localStorage.removeItem(roleKey(portal))
+  if (portal === 'internal') localStorage.removeItem('userRole')
+}
+
+function clearAllSessions() {
+  clearPortalSession('internal')
+  clearPortalSession('customer')
+  localStorage.removeItem('freshToken')
 }
 
 
@@ -50,6 +66,10 @@ export default {
       else isAuthenticated = false
     }
 
+    if (portal === 'all') {
+      return this.isUserLoggedIn('internal') || this.isUserLoggedIn('customer')
+    }
+
     const token = localStorage.getItem(tokenKey(portal))
       || (portal === 'internal' ? localStorage.getItem('freshToken') : null);
 
@@ -59,13 +79,17 @@ export default {
   },
   async login (payload) {
     const portal = payload.portal || 'internal'
-    // If user is already logged in notify and exit
-    if (this.isUserLoggedIn(portal)) {
-      payload.notify({
-        title: 'Login Attempt',
-        text: 'You are already logged in!',
-        type: 'warning'
-      })
+
+    if (portal === 'all') {
+      clearAllSessions()
+    } else if (this.isUserLoggedIn(portal)) {
+      if (payload.notify) {
+        payload.notify({
+          title: 'Login Attempt',
+          text: 'You are already logged in!',
+          type: 'warning'
+        })
+      }
       return false
     }
     // Try to sigin
@@ -90,7 +114,10 @@ export default {
       }
 
       const role = Number(response.data.user_data && response.data.user_data.role)
-      const allowed = portal === 'customer' ? role === 1 : (role === 0 || role === 2)
+      const actualPortal = portal === 'all' ? portalForRole(role) : portal
+      const allowed = portal === 'all'
+        ? [0, 1, 2].includes(role)
+        : (portal === 'customer' ? role === 1 : (role === 0 || role === 2))
       if (!allowed)
       {
         const error = Error(
@@ -101,13 +128,13 @@ export default {
         error.name = "Not admin";
         throw error;
       }
-      storeToken(response.data.token, portal)
-      storeRole(response.data.user_data, portal)
+      storeToken(response.data.token, actualPortal)
+      storeRole(response.data.user_data, actualPortal)
       return true;
     } catch (error) {
-      localStorage.removeItem(tokenKey(portal))
-      localStorage.removeItem(roleKey(portal))
-      if (portal === 'internal') localStorage.removeItem('userRole')
+      const portals = portal === 'all' ? ['internal', 'customer'] : [portal]
+      portals.forEach(item => clearPortalSession(item))
+      if (portal === 'all') localStorage.removeItem('freshToken')
       const message = error.response && error.response.data && error.response.data.message
         ? error.response.data.message
         : error.message
@@ -139,14 +166,15 @@ export default {
     }
 
     // If user clicks on logout -> redirect
-    Router.push(portal === 'customer' ? '/customer/login' : '/login').catch(() => {})
+    Router.push('/login').catch(() => {})
   },
   logout2() {
     return authClient.post("/logout");
   },
   async forgotPassword(payload) {
-    await authClient.get("/sanctum/csrf-cookie");
-    return authClient.post("/forgot-password", payload);
+    return axios.post('/auth/reset-password', {
+      email: payload.email,
+    })
   },
   getAuthUser() {
     return axios.post("/auth/verify-user");
@@ -155,10 +183,12 @@ export default {
     return axios.post('/users/update-profile', payload)
   },
   async resetPassword(payload) {
-    return axios
-    .post('/auth/reset-password', {
+    return axios.post('/auth/reset-password', {
       email: payload.email,
-    });
+      token: payload.token,
+      password: payload.password,
+      password_confirmation: payload.password_confirmation,
+    })
   },
   registerDriver(payload) {
     return axios.post('/auth/register-driver', payload)

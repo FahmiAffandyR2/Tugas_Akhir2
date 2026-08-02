@@ -1,0 +1,392 @@
+Project AdminPanel_ERD_Ringkas {
+  database_type: "MySQL"
+}
+
+Table users {
+  id int [pk, increment]
+  name varchar
+  email varchar
+  role int
+  status_id int
+  wallet double
+}
+
+Table statuses {
+  id int [pk, increment]
+  name varchar
+}
+
+Table user_statuses {
+  id int [pk, increment]
+  user_id int
+  status_id int
+}
+
+Table currencies {
+  id int [pk, increment]
+  name varchar
+  code varchar
+  symbol varchar
+}
+
+Table settings {
+  id int [pk, increment]
+  currency_id int
+  rate_per_km double
+  commission double
+  allow_seat_selection boolean
+}
+
+Table bank_accounts {
+  id int [pk, increment]
+  user_id int
+  account_number varchar
+  bank_name varchar
+}
+
+Table paypal_accounts {
+  id int [pk, increment]
+  user_id int
+  email varchar
+}
+
+Table mobile_money_accounts {
+  id int [pk, increment]
+  user_id int
+  phone_number varchar
+  network varchar
+}
+
+Table redemptions {
+  id int [pk, increment]
+  user_id int
+  redemption_type_id int
+  bank_account_id int
+  paypal_account_id int
+  mobile_money_account_id int
+  redemption_amount double
+}
+
+Table redemption_types {
+  id int [pk, increment]
+  name varchar
+}
+
+Table fleet_depots {
+  id int [pk, increment]
+  name varchar
+  city varchar
+  latitude decimal
+  longitude decimal
+}
+
+Table buses {
+  id int [pk, increment]
+  license varchar
+  capacity int
+  driver_id int
+  depot_id int
+}
+
+Table routes {
+  id int [pk, increment]
+  name varchar
+}
+
+Table stops {
+  id int [pk, increment]
+  name varchar
+  address varchar
+  lat varchar
+  lng varchar
+}
+
+Table route_stops {
+  id int [pk, increment]
+  route_id int
+  stop_id int
+  `order` int
+}
+
+Table route_stop_directions {
+  id int [pk, increment]
+  route_stop_id int
+  `index` int
+  overview_path longtext
+}
+
+Table trips {
+  id int [pk, increment]
+  route_id int
+  status_id int
+  driver_id int
+  effective_date date
+  repetition_period int
+}
+
+Table trip_details {
+  id int [pk, increment]
+  trip_id int
+  stop_id int
+  planned_timestamp time
+  actual_timestamp time
+}
+
+Table planned_trips {
+  id int [pk, increment]
+  trip_id int
+  route_id int
+  bus_id int
+  driver_id int
+  planned_date date
+  started_at timestamp
+  ended_at timestamp
+}
+
+Table planned_trip_details {
+  id int [pk, increment]
+  planned_trip_id int
+  stop_id int
+  planned_timestamp time
+  actual_timestamp time
+}
+
+Table customer_reserved_trips {
+  id int [pk, increment]
+  ticket_number varchar
+  user_id int
+  planned_trip_id int
+  start_stop_id int
+  end_stop_id int
+  trip_price double
+  paid_price double
+  ride_status int
+  payment_method int
+  seat_number int
+}
+
+Table fav_trips {
+  id int [pk, increment]
+  user_id int
+  trip_id int
+  date date
+}
+
+Table suspended_trips {
+  id int [pk, increment]
+  trip_id int
+  repetition_period int
+  date date
+}
+
+Table trip_search_results {
+  id int [pk, increment]
+  user_id int
+  route_id int
+  planned_trip_id int
+  start_stop_id int
+  end_stop_id int
+  price double
+  distance double
+}
+
+Table user_payments {
+  id int [pk, increment]
+  user_id int
+  reservation_id int
+  amount double
+  payment_date date
+}
+
+Table user_refunds {
+  id int [pk, increment]
+  user_id int
+  reservation_id int
+  amount double
+  refund_date date
+}
+
+Table user_charges {
+  id int [pk, increment]
+  user_id int
+  amount double
+  payment_date date
+}
+
+Table places {
+  id int [pk, increment]
+  user_id int
+  name varchar
+  latitude double
+  longitude double
+  favorite int
+}
+
+Table driver_information {
+  id int [pk, increment]
+  user_id int
+  first_name varchar
+  last_name varchar
+  license_number varchar
+}
+
+Table driver_documents {
+  id int [pk, increment]
+  driver_information_id int
+  document_name varchar
+  document_number varchar
+  expiry_date date
+}
+
+Table complaints {
+  id int [pk, increment]
+  user_id int
+  reservation_id int
+  stop_id int
+  complaint text
+  status int
+}
+
+Table notifications {
+  id int [pk, increment]
+  user_id int
+  message text
+  seen boolean
+}
+
+Table messages {
+  id bigint [pk, increment]
+  user_id int
+  body text
+}
+
+Table coupons {
+  id int [pk, increment]
+  code varchar
+  discount int
+  `limit` int
+  status int
+  expiration_date datetime
+}
+
+Table coupon_customers {
+  id int [pk, increment]
+  coupon_id int
+  user_id int
+  planned_trip_id int
+}
+
+Table charter_bookings {
+  id bigint [pk, increment]
+  reference_code varchar
+  customer_id int
+  bus_id int
+  driver_id int
+  depot_id int
+  operational_planned_trip_id int
+  origin varchar
+  destination varchar
+  departure_date date
+  return_date date
+  passenger_count int
+  quoted_price decimal
+  status varchar
+  payment_status varchar
+}
+
+Table charter_revenue_transactions {
+  id bigint [pk, increment]
+  charter_booking_id bigint
+  verified_by int
+  amount decimal
+  status varchar
+  paid_at timestamp
+}
+
+Table gps_tracking_logs {
+  id bigint [pk, increment]
+  driver_id int
+  bus_id int
+  planned_trip_id int
+  latitude double
+  longitude double
+  speed double
+  recorded_at timestamp
+}
+
+Ref: users.status_id > statuses.id
+Ref: user_statuses.user_id > users.id
+Ref: user_statuses.status_id > statuses.id
+Ref: settings.currency_id > currencies.id
+
+Ref: bank_accounts.user_id > users.id
+Ref: paypal_accounts.user_id > users.id
+Ref: mobile_money_accounts.user_id > users.id
+Ref: redemptions.user_id > users.id
+Ref: redemptions.redemption_type_id > redemption_types.id
+Ref: redemptions.bank_account_id > bank_accounts.id
+Ref: redemptions.paypal_account_id > paypal_accounts.id
+Ref: redemptions.mobile_money_account_id > mobile_money_accounts.id
+
+Ref: buses.driver_id > users.id
+Ref: buses.depot_id > fleet_depots.id
+Ref: routes.id < route_stops.route_id
+Ref: stops.id < route_stops.stop_id
+Ref: route_stops.id < route_stop_directions.route_stop_id
+
+Ref: trips.route_id > routes.id
+Ref: trips.status_id > statuses.id
+Ref: trips.driver_id > users.id
+Ref: trip_details.trip_id > trips.id
+Ref: trip_details.stop_id > stops.id
+
+Ref: planned_trips.trip_id > trips.id
+Ref: planned_trips.route_id > routes.id
+Ref: planned_trips.bus_id > buses.id
+Ref: planned_trips.driver_id > users.id
+Ref: planned_trip_details.planned_trip_id > planned_trips.id
+Ref: planned_trip_details.stop_id > stops.id
+
+Ref: customer_reserved_trips.user_id > users.id
+Ref: customer_reserved_trips.planned_trip_id > planned_trips.id
+Ref: customer_reserved_trips.start_stop_id > stops.id
+Ref: customer_reserved_trips.end_stop_id > stops.id
+Ref: fav_trips.user_id > users.id
+Ref: fav_trips.trip_id > trips.id
+Ref: suspended_trips.trip_id > trips.id
+Ref: trip_search_results.user_id > users.id
+Ref: trip_search_results.route_id > routes.id
+Ref: trip_search_results.planned_trip_id > planned_trips.id
+Ref: trip_search_results.start_stop_id > stops.id
+Ref: trip_search_results.end_stop_id > stops.id
+
+Ref: user_payments.user_id > users.id
+Ref: user_payments.reservation_id > customer_reserved_trips.id
+Ref: user_refunds.user_id > users.id
+Ref: user_refunds.reservation_id > customer_reserved_trips.id
+Ref: user_charges.user_id > users.id
+Ref: places.user_id > users.id
+
+Ref: driver_information.user_id > users.id
+Ref: driver_documents.driver_information_id > driver_information.id
+Ref: complaints.user_id > users.id
+Ref: complaints.reservation_id > customer_reserved_trips.id
+Ref: complaints.stop_id > stops.id
+Ref: notifications.user_id > users.id
+Ref: messages.user_id > users.id
+
+Ref: coupon_customers.coupon_id > coupons.id
+Ref: coupon_customers.user_id > users.id
+Ref: coupon_customers.planned_trip_id > planned_trips.id
+
+Ref: charter_bookings.customer_id > users.id
+Ref: charter_bookings.bus_id > buses.id
+Ref: charter_bookings.driver_id > users.id
+Ref: charter_bookings.depot_id > fleet_depots.id
+Ref: charter_bookings.operational_planned_trip_id > planned_trips.id
+Ref: charter_revenue_transactions.charter_booking_id > charter_bookings.id
+Ref: charter_revenue_transactions.verified_by > users.id
+
+Ref: gps_tracking_logs.driver_id > users.id
+Ref: gps_tracking_logs.bus_id > buses.id
+Ref: gps_tracking_logs.planned_trip_id > planned_trips.id

@@ -21,7 +21,7 @@ class PlannedTrip extends Model
     //plannedTripDetail
     public function plannedTripDetail()
     {
-        return $this->hasMany(PlannedTripDetail::class);
+        return $this->hasMany(PlannedTripDetail::class)->orderBy('planned_timestamp');
     }
 
     //driver
@@ -46,5 +46,10 @@ class PlannedTrip extends Model
     public function reservations()
     {
         return $this->hasMany(Reservation::class);
+    }
+
+    public function charterBooking()
+    {
+        return $this->hasOne(CharterBooking::class, 'operational_planned_trip_id');
     }
 }

@@ -179,7 +179,9 @@ export default {
           polyline.data.map((point) => [point.lat, point.lng]),
           {
             color: polyline.strokeColor || "#1976d2",
-            weight: 5,
+            weight: polyline.weight || 5,
+            opacity: polyline.opacity || 1,
+            dashArray: polyline.dashArray || null,
           }
         ).addTo(this.polylineLayer);
       });
@@ -213,6 +215,8 @@ export default {
 
 <style scoped>
 .leaflet-map {
+  position: relative;
+  z-index: 0;
   width: 100%;
   height: 400px;
 }

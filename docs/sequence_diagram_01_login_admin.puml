@@ -1,0 +1,43 @@
+@startuml
+title Sequence Diagram Login Admin PO
+
+skinparam backgroundColor #FFFFFF
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #777777
+  LifeLineBackgroundColor #F8F8F8
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor #FFFFFF
+  DatabaseBorderColor #333333
+  DatabaseBackgroundColor #FFFFFF
+}
+
+actor "Admin PO" as Admin
+participant "Frontend Admin\n(Vue Dashboard)" as FEAdmin
+participant "AuthService" as AuthService
+participant "Laravel API" as API
+participant "AuthController" as AuthController
+database "Database\n(MySQL)" as DB
+
+Admin -> FEAdmin: Membuka halaman login
+FEAdmin -> AuthService: Input email, password,\ndan portal internal
+AuthService -> API: POST /auth/login
+API -> AuthController: login(request)
+AuthController -> DB: Validasi email, password,\ndan role user
+DB --> AuthController: Data user
+
+alt Login berhasil dan role admin valid
+  AuthController -> AuthController: Generate token Sanctum\nability: admin
+  AuthController --> API: Token dan data user
+  API --> AuthService: Response login berhasil
+  AuthService --> FEAdmin: Simpan token dan role admin
+  FEAdmin --> Admin: Masuk ke dashboard
+else Login gagal atau role tidak sesuai
+  AuthController --> API: Response error
+  API --> AuthService: Login gagal
+  AuthService --> FEAdmin: Kirim pesan error
+  FEAdmin --> Admin: Tampilkan pesan kesalahan
+end
+
+@enduml

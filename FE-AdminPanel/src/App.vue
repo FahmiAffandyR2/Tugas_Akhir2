@@ -5,6 +5,7 @@
     </transition>
     <vue-progress-bar></vue-progress-bar>
     <notifications position="bottom right"/>
+    <pwa-install-prompt />
   </component>
 </template>
 
@@ -15,6 +16,8 @@ import LayoutBlank from '@/layouts/Blank.vue'
 import LayoutContent from '@/layouts/Content.vue'
 import LayoutDriver from '@/layouts/Driver.vue'
 import LayoutCustomer from '@/layouts/Customer.vue'
+import PwaInstallPrompt from '@/components/PwaInstallPrompt.vue'
+import AuthService from '@/services/AuthService'
 
 export default {
   components: {
@@ -22,6 +25,7 @@ export default {
     LayoutContent,
     LayoutDriver,
     LayoutCustomer,
+    PwaInstallPrompt,
   },
   setup() {
     const { route } = useRouter()
@@ -44,6 +48,10 @@ export default {
 mounted () {
     //  [App.vue specific] When App.vue is finish loading finish the progress bar
     this.$Progress.finish()
+    window.addEventListener('beforeunload', this.confirmAppExit)
+  },
+  beforeDestroy() {
+    window.removeEventListener('beforeunload', this.confirmAppExit)
   },
   created () {
     //  [App.vue specific] When App.vue is first loaded start the progress bar
@@ -66,6 +74,14 @@ mounted () {
       //  finish the progress bar
       this.$Progress.finish()
     })
+  },
+  methods: {
+    confirmAppExit(event) {
+      if (!AuthService.isUserLoggedIn('all')) return
+
+      event.preventDefault()
+      event.returnValue = ''
+    },
   }
 }
 </script>

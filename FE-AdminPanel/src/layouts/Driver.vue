@@ -66,7 +66,27 @@ export default {
     window.addEventListener('offline', this.updateConnection)
   },
   beforeDestroy() { window.removeEventListener('online', this.updateConnection); window.removeEventListener('offline', this.updateConnection) },
-  methods: { updateConnection() { this.online = navigator.onLine }, logout() { AuthService.logout() } },
+  methods: {
+    updateConnection() { this.online = navigator.onLine },
+    async logout() {
+      const confirmed = await this.confirmLogout()
+      if (confirmed) AuthService.logout()
+    },
+    async confirmLogout() {
+      if (!this.$swal) return window.confirm('Apakah Anda yakin ingin keluar?')
+
+      const result = await this.$swal.fire({
+        title: 'Keluar dari aplikasi?',
+        text: 'Anda perlu login kembali untuk masuk ke akun ini.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, keluar',
+        cancelButtonText: 'Batal',
+      })
+
+      return result.isConfirmed
+    },
+  },
 }
 </script>
 

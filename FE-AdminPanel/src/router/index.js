@@ -12,8 +12,7 @@ const routes = [
   {
     path: '/customer/login',
     name: 'customer-login',
-    component: () => import('@/views/customer/Login.vue'),
-    meta: { layout: 'blank', customerGuest: true },
+    redirect: '/login',
   },
   {
     path: '/customer/register',
@@ -115,6 +114,11 @@ const routes = [
       name: 'buses',
       component: () => import('@/views/system-setup/buses/index.vue'),
     },
+    {
+      path: '/fleet-depots',
+      name: 'fleet-depots',
+      component: () => import('@/views/system-setup/fleet-depots/index.vue'),
+    },
     //////////////////////////buses////////////////////////////////
     {
         path: '/coupons',
@@ -200,6 +204,11 @@ const routes = [
     path: '/reservations',
     name: 'reservations',
     component: () => import('@/views/reservations/index.vue'),
+  },
+  {
+    path: '/charter-bookings',
+    name: 'charter-bookings',
+    component: () => import('@/views/charter-bookings/index.vue'),
   },
   {
     path: '/complaints',
@@ -294,12 +303,17 @@ const routes = [
     },
   },
   {
-    path: '/register',
-    name: 'pages-register',
-    component: () => import('@/views/start-pages/Register.vue'),
+    path: '/reset-password',
+    name: 'reset-password',
+    component: () => import('@/views/ResetPassword.vue'),
     meta: {
       layout: 'blank'
     },
+  },
+  {
+    path: '/register',
+    name: 'pages-register',
+    redirect: '/login',
   },
   {
     path: '/error-404',
@@ -326,13 +340,12 @@ const plainRoutes = [
     "/",
     "/home",
     "/login",
-    "/register",
     "/forgot-password",
+    "/reset-password",
     "/privacy",
     "/terms",
     "/error-404",
     "/error-500",
-    "/customer/login",
     "/customer/register",
 ];
 
@@ -355,11 +368,11 @@ router.beforeEach((to, from, next) => {
     }
 
     if (to.meta.customerOnly || to.path.startsWith('/customer/')) {
-        if (!auth.isUserLoggedIn('customer')) return next('/customer/login');
+        if (!auth.isUserLoggedIn('customer')) return next('/login');
         if (Number(localStorage.getItem('customerRole')) !== 1) {
             localStorage.removeItem('customerToken');
             localStorage.removeItem('customerRole');
-            return next('/customer/login');
+            return next('/login');
         }
         return next();
     }

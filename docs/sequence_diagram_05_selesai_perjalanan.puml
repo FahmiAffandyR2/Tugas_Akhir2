@@ -1,0 +1,53 @@
+@startuml
+title Sequence Diagram Driver Mengakhiri Perjalanan
+
+skinparam backgroundColor #FFFFFF
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #777777
+  LifeLineBackgroundColor #F8F8F8
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor #FFFFFF
+  DatabaseBorderColor #333333
+  DatabaseBackgroundColor #FFFFFF
+}
+
+actor "Driver" as Driver
+actor "Admin PO" as Admin
+participant "Frontend Driver\n(Aplikasi Driver)" as FEDriver
+participant "Laravel API" as API
+participant "TripController" as TripController
+database "Database\n(MySQL)" as DB
+participant "Frontend Admin\n(Vue Dashboard)" as FEAdmin
+participant "Leaflet Map /\nOpenStreetMap" as Map
+
+Driver -> FEDriver: Menekan tombol selesai perjalanan
+FEDriver -> API: POST /planned-trips/start-stop\nplanned_trip_id, mode=0
+API -> TripController: startStopPlannedTrip(request)
+TripController -> DB: Validasi trip aktif\ndan driver
+DB --> TripController: Data planned trip
+
+alt Trip aktif dan driver sesuai
+  TripController -> DB: Update ended_at
+  TripController -> DB: Jika charter booking,\nupdate status completed
+  DB --> TripController: Perjalanan selesai
+  TripController --> API: Response success
+  API --> FEDriver: Status perjalanan selesai
+  FEDriver --> Driver: Tampilkan perjalanan selesai
+
+  FEAdmin -> API: GET /planned-trips/on-route
+  API -> TripController: getOnRouteTrips()
+  TripController -> DB: Ambil trip yang masih running
+  DB --> TripController: Data running trips terbaru
+  TripController --> API: Daftar running trips
+  API --> FEAdmin: Trip selesai tidak ditampilkan
+  FEAdmin -> Map: Hapus marker bus selesai
+  Map --> Admin: Dashboard hanya menampilkan trip aktif
+else Trip tidak aktif atau driver tidak sesuai
+  TripController --> API: Response error
+  API --> FEDriver: Gagal mengakhiri perjalanan
+  FEDriver --> Driver: Tampilkan pesan gagal
+end
+
+@enduml

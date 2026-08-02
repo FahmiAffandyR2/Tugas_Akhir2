@@ -30,6 +30,10 @@
             {{ getDriver(item.driver) }}
           </v-chip>
         </template>
+        <template v-slot:item.depot="{ item }">
+          <v-chip v-if="item.depot" small color="purple lighten-5" text-color="primary"><v-icon left x-small>mdi-garage-variant</v-icon>{{ item.depot.name }}</v-chip>
+          <span v-else class="grey--text">Belum ditentukan</span>
+        </template>
         <template v-slot:item.created_at="{ item }">
           <small>{{ item.created_at | moment("LL") }}</small> -
           <small class="text-muted">{{ item.created_at | moment("LT") }}</small>
@@ -79,6 +83,18 @@
                       hint="license plate of the bus"
                       required
                     ></v-text-field>
+                  </v-col>
+                  <v-col cols="12" sm="6" md="3">
+                    <v-select
+                      v-model="depotId"
+                      :items="depots"
+                      item-text="name"
+                      item-value="id"
+                      clearable
+                      label="Depo armada"
+                      hint="Lokasi asal bus"
+                      persistent-hint
+                    ></v-select>
                   </v-col>
                   <v-col
                     cols="12"
@@ -200,6 +216,7 @@ export default {
   data() {
     return {
       buses: [],
+      depots: [],
       availableDrivers: [],
       isLoading: false,
       search: "",
@@ -209,6 +226,7 @@ export default {
       valid: true,
       id: null,
       selectedBus: null,
+      depotId: null,
       license: '',
       licenseRules: [
         v => !!v || 'License plate is required',
@@ -230,6 +248,7 @@ export default {
         { text: "Capacity", value: "capacity" },
         { text: "Pricing Factor", value: "price_factor" },
         { text: "Driver", value: "driver" },
+        { text: "Depo Armada", value: "depot" },
         { text: "Created", value: "created_at" },
         { text: "Actions", value: "actions", sortable: false },
       ],
@@ -248,6 +267,7 @@ export default {
   },
   mounted() {
     this.loadBuses();
+    this.loadDepots();
   },
   methods: {
     loadBuses() {
@@ -271,6 +291,13 @@ export default {
           this.isLoading = false;
         });
     },
+    loadDepots() {
+      axios.get('/fleet-depots').then(response => {
+        this.depots = (response.data.depots || []).filter(depot => depot.is_active)
+      }).catch(() => {
+        this.$notify({ title: 'Error', text: 'Lokasi depo tidak dapat dimuat', type: 'error' })
+      })
+    },
     validate () {
       return this.$refs.form.validate()
     },
@@ -287,6 +314,7 @@ export default {
               capacity: this.capacity,
               price_factor: this.price_factor,
               seat_config: JSON.stringify(this.seatConfig),
+              depot_id: this.depotId,
             },
           })
           .then((response) => {
@@ -316,6 +344,7 @@ export default {
       this.license = '';
       this.price_factor = '1';
       this.id = null;
+      this.depotId = null;
       this.capacity = 20;
       this.seatConfig = {
         totalRows: 5,
@@ -332,6 +361,7 @@ export default {
     },
     editBus(bus) {
       this.id = bus.id;
+      this.depotId = bus.depot_id || null;
       this.license = bus.license;
       this.capacity = bus.capacity;
       this.price_factor = bus.price_factor;

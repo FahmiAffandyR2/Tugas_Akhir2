@@ -32,6 +32,13 @@
       </v-menu>
     </v-app-bar>
     <v-main><v-container class="customer-container pa-4 pa-md-8"><slot /></v-container></v-main>
+
+    <v-bottom-navigation v-if="$vuetify.breakpoint.smAndDown" app grow color="primary" class="customer-bottom-nav">
+      <v-btn v-for="item in mobileMenus" :key="item.to" :to="item.to">
+        <span>{{ item.mobileTitle }}</span>
+        <v-icon>{{ item.icon }}</v-icon>
+      </v-btn>
+    </v-bottom-navigation>
   </v-app>
 </template>
 
@@ -42,17 +49,40 @@ export default {
     drawer: null,
     customerName: 'Customer',
     menus: [
-      { title: 'Beranda', icon: 'mdi-view-dashboard-outline', to: '/customer/beranda' },
-      { title: 'Pesan Bus', icon: 'mdi-bus-marker', to: '/customer/pesan' },
-      { title: 'Pemesanan Saya', icon: 'mdi-clipboard-text-clock-outline', to: '/customer/pemesanan' },
-      { title: 'Profil Saya', icon: 'mdi-account-outline', to: '/customer/profil' },
+      { title: 'Beranda', mobileTitle: 'Beranda', icon: 'mdi-view-dashboard-outline', to: '/customer/beranda' },
+      { title: 'Pesan Bus', mobileTitle: 'Pesan', icon: 'mdi-bus-marker', to: '/customer/pesan' },
+      { title: 'Pemesanan Saya', mobileTitle: 'Pesanan', icon: 'mdi-clipboard-text-clock-outline', to: '/customer/pemesanan' },
+      { title: 'Profil Saya', mobileTitle: 'Profil', icon: 'mdi-account-outline', to: '/customer/profil' },
     ],
   }),
+  computed: {
+    mobileMenus() { return this.menus },
+  },
   async created() { try { const r = await AuthService.getAuthUser(); this.customerName = r.data.data.name } catch (_) {} },
-  methods: { logout() { AuthService.logout('customer') } },
+  methods: {
+    async logout() {
+      const confirmed = await this.confirmLogout()
+      if (confirmed) AuthService.logout('customer')
+    },
+    async confirmLogout() {
+      if (!this.$swal) return window.confirm('Apakah Anda yakin ingin keluar?')
+
+      const result = await this.$swal.fire({
+        title: 'Keluar dari aplikasi?',
+        text: 'Anda perlu login kembali untuk masuk ke akun ini.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, keluar',
+        cancelButtonText: 'Batal',
+      })
+
+      return result.isConfirmed
+    },
+  },
 }
 </script>
 
 <style scoped>
-.customer-app{background:#f7f8fc!important;color:#4b465c}.customer-drawer{border-right:1px solid #ececf3!important}.brand-logo{width:52px;height:52px;border-radius:16px;background:#f1eaff;display:flex;align-items:center;justify-content:center}.customer-bar{border-bottom:1px solid #ececf3!important}.customer-container{max-width:1320px}.customer-menu{border-radius:12px!important;color:#716b7c}.customer-menu-active{background:linear-gradient(118deg,#7c3aed,#9b5cff)!important;color:#fff!important;box-shadow:0 6px 16px rgba(124,58,237,.25)}.customer-menu-active .v-icon{color:#fff!important}.help-card{border-radius:16px;background:#f7f3ff;border:1px solid #ede4ff}
+.customer-app{background:#f7f8fc!important;color:#4b465c}.customer-drawer{border-right:1px solid #ececf3!important}.brand-logo{width:52px;height:52px;border-radius:16px;background:#f1eaff;display:flex;align-items:center;justify-content:center}.customer-bar{border-bottom:1px solid #ececf3!important}.customer-container{max-width:1320px}.customer-menu{border-radius:12px!important;color:#716b7c}.customer-menu-active{background:linear-gradient(118deg,#7c3aed,#9b5cff)!important;color:#fff!important;box-shadow:0 6px 16px rgba(124,58,237,.25)}.customer-menu-active .v-icon{color:#fff!important}.help-card{border-radius:16px;background:#f7f3ff;border:1px solid #ede4ff}.customer-bottom-nav{border-top:1px solid rgba(58,53,65,.1)}
+@media (max-width: 600px){.customer-container{padding-left:16px!important;padding-right:16px!important;padding-bottom:82px!important}}
 </style>

@@ -54,7 +54,7 @@ export default {
   },
   data() {
     return {
-      email: null,
+      email: this.$route.query.email || null,
       password: null,
       passwordConfirm: null,
       error: null,
@@ -72,7 +72,7 @@ export default {
         token: this.$route.query.token,
       };
       AuthService.resetPassword(payload)
-        .then(() => (this.message = "Password reset."))
+        .then((response) => (this.message = response.data.message || "Password reset."))
         .catch((error) => (this.error = getError(error)));
     },
   },

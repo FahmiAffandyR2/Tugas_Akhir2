@@ -29,10 +29,15 @@
             <div v-if="!currentPosition" class="map-waiting pa-3"><v-icon small color="warning" class="mr-2">mdi-crosshairs-question</v-icon>Menunggu posisi GPS perangkat</div>
           </v-col>
           <v-col cols="12" lg="4" class="stops-column pa-5">
+            <div v-if="nextStop" class="next-stop-card pa-3 mb-4">
+              <div class="caption text-uppercase font-weight-bold primary--text mb-1">Arah driver ke titik jemput</div>
+              <div class="font-weight-bold">{{ nextStop.name || 'Titik jemput berikutnya' }}</div>
+              <div v-if="nextStopDistanceLabel" class="caption grey--text mt-1">{{ nextStopDistanceLabel }} dari posisi driver</div>
+            </div>
             <div class="d-flex align-center mb-4"><v-icon color="primary" class="mr-2">mdi-map-marker-path</v-icon><span class="font-weight-bold">Titik pemberhentian</span></div>
             <div v-for="(stop,index) in routeStops" :key="stop.id" class="stop-item d-flex">
               <div class="stop-track mr-3"><span :class="['stop-dot', {destination:index===routeStops.length-1}]" /><span v-if="index<routeStops.length-1" class="stop-line" /></div>
-              <div class="pb-5"><div class="font-weight-bold">{{ stop.name || `Stop ${index+1}` }}</div><div class="caption grey--text">{{ index===0?'Titik awal':index===routeStops.length-1?'Tujuan akhir':`Pemberhentian ${index+1}` }}</div><div v-if="stop.address" class="caption stop-address mt-1">{{ stop.address }}</div></div>
+              <div class="pb-5"><div class="font-weight-bold" :class="{ 'primary--text': nextStop && nextStop.id === stop.id }">{{ stop.name || `Stop ${index+1}` }}</div><div class="caption grey--text">{{ index===0?'Titik awal':index===routeStops.length-1?'Tujuan akhir':`Pemberhentian ${index+1}` }}</div><div v-if="stop.address" class="caption stop-address mt-1">{{ stop.address }}</div></div>
             </div>
             <v-alert v-if="routeStops.length===0" type="warning" text dense>Daftar pemberhentian belum tersedia pada rute ini.</v-alert>
           </v-col>
@@ -63,7 +68,7 @@
 import LeafletMapLoader from '@/components/LeafletMapLoader.vue'
 export default {
   components: { LeafletMapLoader },
-  data: () => ({ trips: [], loading: false, actionId: null, watchId: null, activeTripId: null, lastSentAt: 0, gpsMessage: null, currentPosition: null }),
+  data: () => ({ trips: [], loading: false, actionId: null, watchId: null, activeTripId: null, lastSentAt: 0, gpsMessage: null, currentPosition: null, driverToNextStopRoutePath: [], routeRequestTimeout: null, routeRequestId: 0, lastRouteRequestKey: null }),
   computed: {
     filter() { return this.$route.meta.tripFilter },
     filteredTrips() { return this.trips.filter(t => this.filter === 'active' ? this.isActive(t) : this.filter === 'history' ? !!t.ended_at : this.isScheduled(t)) },
@@ -75,14 +80,83 @@ export default {
     activeTrip() { return this.trips.find(this.isActive) || null },
     routeStops() { return this.activeTrip && Array.isArray(this.activeTrip.route_stops) ? this.activeTrip.route_stops : [] },
     routePath() { return this.activeTrip && Array.isArray(this.activeTrip.route_path) ? this.activeTrip.route_path.map(p => ({ lat:Number(p.lat), lng:Number(p.lng) })).filter(p => Number.isFinite(p.lat)&&Number.isFinite(p.lng)) : [] },
+    tripDetails() {
+      if (!this.activeTrip) return []
+      const details = this.activeTrip.planned_trip_detail || this.activeTrip.plannedTripDetail || []
+      return Array.isArray(details) ? details : []
+    },
+    nextStop() {
+      const pendingDetail = this.tripDetails.find(detail => !detail.actual_timestamp && detail.stop)
+      if (pendingDetail && pendingDetail.stop) {
+        return {
+          id: pendingDetail.stop.id,
+          name: pendingDetail.stop.name,
+          address: pendingDetail.stop.address,
+          lat: Number(pendingDetail.stop.lat),
+          lng: Number(pendingDetail.stop.lng),
+        }
+      }
+      return this.routeStops.find(stop => Number.isFinite(Number(stop.lat)) && Number.isFinite(Number(stop.lng))) || null
+    },
+    nextStopDistanceLabel() {
+      if (!this.currentPosition || !this.nextStop) return null
+      const distance = this.driverToNextStopDistanceKm
+      return distance < 1 ? `${Math.round(distance * 1000)} m` : `${distance.toFixed(1)} km`
+    },
+    driverToNextStopDistanceKm() {
+      const path = this.driverToNextStopRoutePath.length
+        ? this.driverToNextStopRoutePath
+        : this.routePathToNextStop.length
+          ? this.routePathToNextStop
+          : this.driverToNextStopPath
+      if (path.length < 2) return this.currentPosition && this.nextStop ? this.distanceKm(this.currentPosition, this.nextStop) : 0
+      let total = 0
+      for (let i = 0; i < path.length - 1; i++) total += this.distanceKm(path[i], path[i + 1])
+      return total
+    },
     destination() { return this.routeStops.length ? this.routeStops[this.routeStops.length-1] : null },
     mapCenter() { return this.currentPosition || (this.routeStops[0] ? {lat:Number(this.routeStops[0].lat),lng:Number(this.routeStops[0].lng)} : {lat:-6.2,lng:106.8}) },
     navigationMarkers() {
-      const markers=this.routeStops.map((stop,index)=>({place_id:`stop-${stop.id}`,position:{lat:Number(stop.lat),lng:Number(stop.lng)},infoText:`<b>${stop.name||`Stop ${index+1}`}</b><br>${index===0?'Titik awal':index===this.routeStops.length-1?'Tujuan akhir':'Pemberhentian'}`}))
+      const markers=this.routeStops.map((stop,index)=>({place_id:`stop-${stop.id}`,position:{lat:Number(stop.lat),lng:Number(stop.lng)},infoText:`<b>${stop.name||`Stop ${index+1}`}</b><br>${this.nextStop&&this.nextStop.id===stop.id?'Titik jemput berikutnya':index===0?'Titik awal':index===this.routeStops.length-1?'Tujuan akhir':'Pemberhentian'}`}))
       if(this.currentPosition) markers.push({place_id:'driver-position',position:this.currentPosition,infoText:'<b>Posisi Anda saat ini</b>'})
       return markers
     },
-    navigationPolylines() { return this.routePath.length ? [{data:this.routePath,strokeColor:'#7c3aed'}] : [] },
+    driverToNextStopPath() { return this.currentPosition && this.nextStop ? [this.currentPosition, {lat:Number(this.nextStop.lat),lng:Number(this.nextStop.lng)}] : [] },
+    routePathToNextStop() {
+      if (!this.currentPosition || !this.nextStop || this.routePath.length < 2) return []
+
+      const driverIndex = this.nearestPointIndex(this.routePath, this.currentPosition)
+      const stopIndex = this.nearestPointIndex(this.routePath, this.nextStop)
+      if (driverIndex === -1 || stopIndex === -1) return []
+
+      const start = Math.min(driverIndex, stopIndex)
+      const end = Math.max(driverIndex, stopIndex)
+      const segment = this.routePath.slice(start, end + 1)
+
+      if (segment.length < 2) return []
+      return [
+        this.currentPosition,
+        ...segment,
+        { lat: Number(this.nextStop.lat), lng: Number(this.nextStop.lng) },
+      ]
+    },
+    navigationPolylines() {
+      const lines = []
+      if (this.routePath.length) lines.push({data:this.routePath,strokeColor:'#7c3aed',weight:5})
+      const driverPath = this.driverToNextStopRoutePath.length
+        ? this.driverToNextStopRoutePath
+        : this.routePathToNextStop.length
+          ? this.routePathToNextStop
+          : this.driverToNextStopPath
+      if (driverPath.length) lines.push({
+        data:driverPath,
+        strokeColor:'#22c55e',
+        weight:4,
+        dashArray:this.driverToNextStopRoutePath.length || this.routePathToNextStop.length ? null : '8 8',
+        opacity:.95,
+      })
+      return lines
+    },
     remainingDistanceKm() {
       if(!this.currentPosition||!this.destination)return null
       if(!this.routePath.length)return this.distanceKm(this.currentPosition,this.destination)
@@ -95,9 +169,19 @@ export default {
     remainingDistanceLabel() { const distance=this.remainingDistanceKm;return distance===null?'Menunggu GPS':distance<1?`${Math.round(distance*1000)} m`:`${distance.toFixed(1)} km` },
     etaLabel() { const distance=this.remainingDistanceKm;if(distance===null)return '-';const minutes=Math.max(1,Math.round(distance/40*60));if(minutes<60)return `± ${minutes} menit`;return `± ${Math.floor(minutes/60)} jam ${minutes%60} mnt` },
   },
-  watch: { '$route.meta.tripFilter'() { this.resumeTracking() } },
+  watch: {
+    '$route.meta.tripFilter'() { this.resumeTracking() },
+    currentPosition: {
+      deep: true,
+      handler() { this.scheduleDriverRoute() },
+    },
+    nextStop: {
+      deep: true,
+      handler() { this.scheduleDriverRoute() },
+    },
+  },
   mounted() { this.loadTrips() },
-  beforeDestroy() { this.stopTracking() },
+  beforeDestroy() { this.stopTracking(); if (this.routeRequestTimeout) clearTimeout(this.routeRequestTimeout) },
   methods: {
     async loadTrips() {
       this.loading = true
@@ -132,7 +216,7 @@ export default {
       catch (e) { this.notifyError(e, 'Perjalanan gagal diselesaikan.') }
       finally { this.actionId = null }
     },
-    resumeTracking() { const active = this.trips.find(this.isActive); if (active) { const lat=Number(active.last_position_lat);const lng=Number(active.last_position_lng);if(Number.isFinite(lat)&&Number.isFinite(lng))this.currentPosition={lat,lng};this.startTracking(active.id) } else { this.currentPosition=null;this.stopTracking() } },
+    resumeTracking() { const active = this.trips.find(this.isActive); if (active) { const lat=Number(active.last_position_lat);const lng=Number(active.last_position_lng);if(Number.isFinite(lat)&&Number.isFinite(lng))this.currentPosition={lat,lng};this.startTracking(active.id);this.scheduleDriverRoute() } else { this.currentPosition=null;this.driverToNextStopRoutePath=[];this.stopTracking() } },
     startTracking(id) {
       if (this.watchId !== null && this.activeTripId === id) return
       this.stopTracking(); this.activeTripId = id
@@ -153,6 +237,87 @@ export default {
     geoError(e) { return e.code === 1 ? 'Izin lokasi ditolak. Aktifkan izin GPS untuk memulai perjalanan.' : 'Lokasi GPS tidak dapat diperoleh. Pastikan GPS aktif.' },
     setGpsError(text) { this.gpsMessage = { type: 'error', text } },
     notifyError(e, fallback) { const text = e.response && e.response.data && e.response.data.message || fallback; this.$notify({ type: 'error', title: 'Gagal', text }) },
+    scheduleDriverRoute() {
+      if (this.routeRequestTimeout) clearTimeout(this.routeRequestTimeout)
+      if (!this.currentPosition || !this.nextStop) {
+        this.driverToNextStopRoutePath = []
+        return
+      }
+      this.routeRequestTimeout = setTimeout(() => this.loadDriverToNextStopRoute(), 700)
+    },
+    async loadDriverToNextStopRoute() {
+      if (!this.currentPosition || !this.nextStop) return
+      const originLat = Number(this.currentPosition.lat).toFixed(5)
+      const originLng = Number(this.currentPosition.lng).toFixed(5)
+      const destinationLat = Number(this.nextStop.lat).toFixed(5)
+      const destinationLng = Number(this.nextStop.lng).toFixed(5)
+      const requestKey = `${originLat},${originLng}-${destinationLat},${destinationLng}`
+      if (requestKey === this.lastRouteRequestKey) return
+
+      this.lastRouteRequestKey = requestKey
+      const requestId = ++this.routeRequestId
+      try {
+        const response = await axios.get(`/google-routes/compute-route?origin_lat=${originLat}&origin_lng=${originLng}&destination_lat=${destinationLat}&destination_lng=${destinationLng}`)
+        if (requestId !== this.routeRequestId) return
+
+        const backendPath = this.parseRoutePath(response.data)
+        if (backendPath.length > 1) {
+          this.driverToNextStopRoutePath = backendPath
+          return
+        }
+      } catch (_) {
+        // Try the public OSM router from the browser when the backend route
+        // provider is unavailable in production.
+      }
+
+      try {
+        const osrmPath = await this.loadOsrmRoutePath(originLat, originLng, destinationLat, destinationLng)
+        if (requestId === this.routeRequestId) this.driverToNextStopRoutePath = osrmPath
+      } catch (_) {
+        if (requestId === this.routeRequestId) this.driverToNextStopRoutePath = []
+      }
+    },
+    parseRoutePath(data) {
+      const route = data && data.routes && data.routes[0]
+      const coordinates = route && route.polyline && route.polyline.geoJsonLinestring
+        ? route.polyline.geoJsonLinestring.coordinates
+        : route && route.geometry && Array.isArray(route.geometry.coordinates)
+          ? route.geometry.coordinates
+          : []
+      if (!Array.isArray(coordinates)) return []
+      return coordinates
+        .map(([lng, lat]) => ({ lat:Number(lat), lng:Number(lng) }))
+        .filter(point => Number.isFinite(point.lat) && Number.isFinite(point.lng))
+    },
+    async loadOsrmRoutePath(originLat, originLng, destinationLat, destinationLng) {
+      const coordinates = `${originLng},${originLat};${destinationLng},${destinationLat}`
+      const params = new URLSearchParams({
+        overview: 'full',
+        geometries: 'geojson',
+        steps: 'false',
+      })
+      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinates}?${params.toString()}`, {
+        method: 'GET',
+        mode: 'cors',
+      })
+
+      if (!response.ok) return []
+      const data = await response.json()
+      if (!data || data.code !== 'Ok') return []
+      return this.parseRoutePath(data)
+    },
+    nearestPointIndex(path, target) {
+      let nearest = -1
+      let min = Infinity
+      path.forEach((point, index) => {
+        const distance = this.distanceKm(point, target)
+        if (distance < min) {
+          min = distance
+          nearest = index
+        }
+      })
+      return nearest
+    },
     distanceKm(a,b) { const rad=value=>value*Math.PI/180;const earth=6371;const dLat=rad(Number(b.lat)-Number(a.lat));const dLng=rad(Number(b.lng)-Number(a.lng));const lat1=rad(Number(a.lat));const lat2=rad(Number(b.lat));const value=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLng/2)**2;return earth*2*Math.atan2(Math.sqrt(value),Math.sqrt(1-value)) },
   },
 }
@@ -160,6 +325,6 @@ export default {
 
 <style scoped>
 .trip-card,.empty-state { height:100%; border-radius:16px; border:1px solid rgba(58,53,65,.08); }.card-accent{height:5px}.card-accent.scheduled{background:linear-gradient(90deg,#9155fd,#b47cff)}.card-accent.active{background:linear-gradient(90deg,#ff9800,#ffc107)}.card-accent.completed{background:linear-gradient(90deg,#4caf50,#8bd28e)}.route-symbol{width:42px;height:42px;border-radius:12px;background:#f2eaff;display:flex;align-items:center;justify-content:center}.route-title{font-size:1.05rem}.info-row{display:flex;align-items:center;color:#6e6b78}.gps-banner{background:#eaf7eb;color:#2e7d32;border-radius:10px;display:flex;align-items:center}.gps-pulse{width:9px;height:9px;border-radius:50%;background:#4caf50;box-shadow:0 0 0 5px rgba(76,175,80,.14)}.action-btn{border-radius:10px;text-transform:none}.empty-icon{width:125px;height:100px;border-radius:50%;background:#f2eaff;display:flex;align-items:center;justify-content:center}.empty-copy{max-width:480px}.page-heading{min-height:58px}@media(max-width:600px){.page-heading{align-items:flex-start!important}.page-heading .v-chip{display:none}.route-title{max-width:160px;white-space:normal}}
-.navigation-card{border-radius:18px!important;border:1px solid rgba(58,53,65,.08)}.navigation-header{border-bottom:1px solid rgba(58,53,65,.08)}.navigation-metrics .metric+ .metric{border-left:1px solid rgba(58,53,65,.1)}.map-column{position:relative;background:#eee}.map-column ::v-deep .leaflet-map{height:430px}.map-waiting{position:absolute;z-index:900;left:16px;bottom:16px;background:#fff;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.14)}.stops-column{max-height:430px;overflow-y:auto}.stop-track{width:18px;display:flex;flex-direction:column;align-items:center}.stop-dot{display:block;flex:none;width:14px;height:14px;border:3px solid #fff;border-radius:50%;background:#7c3aed;box-shadow:0 0 0 2px #7c3aed}.stop-dot.destination{background:#ef4444;box-shadow:0 0 0 2px #ef4444}.stop-line{width:2px;flex:1;min-height:32px;background:#ddd5ed;margin-top:4px}.stop-address{color:#777;word-break:break-word}
+.navigation-card{border-radius:18px!important;border:1px solid rgba(58,53,65,.08)}.navigation-header{border-bottom:1px solid rgba(58,53,65,.08)}.navigation-metrics .metric+ .metric{border-left:1px solid rgba(58,53,65,.1)}.map-column{position:relative;background:#eee}.map-column ::v-deep .leaflet-map{height:430px}.map-waiting{position:absolute;z-index:900;left:16px;bottom:16px;background:#fff;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.14)}.stops-column{max-height:430px;overflow-y:auto}.next-stop-card{border-radius:12px;background:#f0fdf4;border:1px solid rgba(34,197,94,.2)}.stop-track{width:18px;display:flex;flex-direction:column;align-items:center}.stop-dot{display:block;flex:none;width:14px;height:14px;border:3px solid #fff;border-radius:50%;background:#7c3aed;box-shadow:0 0 0 2px #7c3aed}.stop-dot.destination{background:#ef4444;box-shadow:0 0 0 2px #ef4444}.stop-line{width:2px;flex:1;min-height:32px;background:#ddd5ed;margin-top:4px}.stop-address{color:#777;word-break:break-word}
 @media(max-width:600px){.navigation-header{align-items:flex-start!important}.navigation-metrics{width:100%}.navigation-metrics .metric:first-child{padding-left:0!important}.map-column ::v-deep .leaflet-map{height:330px}.stops-column{max-height:none}}
 </style>

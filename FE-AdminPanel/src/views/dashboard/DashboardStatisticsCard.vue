@@ -68,11 +68,6 @@ export default {
             icon: 'mdi-account-group',
             color: 'primary',
           }
-        case 'Reservations':
-          return {
-            icon: 'mdi-poll',
-            color: 'info',
-          }
         case 'Trips':
           return {
             icon: 'mdi-bus-clock',

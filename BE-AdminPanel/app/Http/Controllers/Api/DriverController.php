@@ -428,7 +428,7 @@ class DriverController extends Controller
         $driverTrips = $this->plannedTripRepository->findByWhere(
             ['driver_id' => $user_id],
             ['*'],
-            ['plannedTripDetail.stop', 'bus', 'route'])->sortBy('planned_date')->values();
+            ['plannedTripDetail.stop', 'bus', 'route', 'charterBooking.customer'])->sortBy('planned_date')->values();
 
         // Add navigation data only for trips assigned to the authenticated
         // driver. This keeps the endpoint scoped while avoiding a second API

@@ -1,0 +1,131 @@
+@startuml
+title Sequence Diagram Live Tracking Bus Pariwisata
+
+skinparam backgroundColor #FFFFFF
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #777777
+  LifeLineBackgroundColor #F8F8F8
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor #FFFFFF
+  DatabaseBorderColor #333333
+  DatabaseBackgroundColor #FFFFFF
+  BoxBorderColor #999999
+}
+
+actor "Admin PO" as Admin
+actor "Driver" as Driver
+participant "Frontend Admin\n(Vue Dashboard)" as FEAdmin
+participant "Frontend Driver\n(Aplikasi Driver)" as FEDriver
+participant "AuthService" as AuthService
+participant "Laravel API" as API
+participant "AuthController" as AuthController
+participant "TripController" as TripController
+database "Database\n(MySQL)" as DB
+participant "Broadcast Event\nTripPositionUpdated" as Event
+participant "Laravel Echo /\nRealtime Channel" as Echo
+participant "Leaflet Map /\nOpenStreetMap" as Map
+
+== Autentikasi Admin ==
+Admin -> FEAdmin: Membuka halaman login
+FEAdmin -> AuthService: Kirim email, password, portal internal
+AuthService -> API: POST /auth/login
+API -> AuthController: login(request)
+AuthController -> DB: Validasi user dan role
+DB --> AuthController: Data user admin
+
+alt Kredensial valid dan role admin
+  AuthController -> AuthController: Buat token Sanctum\nability: admin
+  AuthController --> API: Token dan data user
+  API --> AuthService: Response login berhasil
+  AuthService --> FEAdmin: Simpan token dan role admin
+  FEAdmin --> Admin: Arahkan ke dashboard
+else Kredensial tidak valid / role tidak sesuai
+  AuthController --> API: Response error
+  API --> AuthService: Login gagal
+  AuthService --> FEAdmin: Tampilkan pesan kesalahan
+  FEAdmin --> Admin: Login ditolak
+end
+
+== Admin Membuka Live Tracking ==
+Admin -> FEAdmin: Pilih menu Live Tracking
+FEAdmin -> API: GET /planned-trips/on-route\nBearer token admin
+API -> TripController: getOnRouteTrips()
+TripController -> DB: Ambil planned trip berstatus running\nbeserta driver, bus, route, posisi terakhir
+DB --> TripController: Data perjalanan aktif
+TripController --> API: Daftar running trips
+API --> FEAdmin: Response running trips
+FEAdmin -> Echo: Subscribe channel setiap trip aktif
+FEAdmin -> Map: Tampilkan marker bus\nberdasarkan last_position_lat/lng
+Map --> Admin: Peta live tracking tampil
+
+== Driver Memulai Perjalanan ==
+Driver -> FEDriver: Tekan tombol mulai perjalanan
+FEDriver -> API: POST /planned-trips/start-stop\nplanned_trip_id, mode=1
+API -> TripController: startStopPlannedTrip(request)
+TripController -> DB: Validasi trip dan driver
+DB --> TripController: Data planned trip
+
+alt Driver sesuai dan trip belum dimulai
+  TripController -> DB: Update started_at
+  DB --> TripController: Status perjalanan tersimpan
+  TripController --> API: Response success
+  API --> FEDriver: Perjalanan aktif
+else Driver tidak sesuai / trip tidak valid
+  TripController --> API: Response error
+  API --> FEDriver: Tampilkan pesan gagal
+end
+
+== Pengiriman Posisi GPS ==
+loop Setiap interval GPS driver
+  FEDriver -> API: POST /planned-trips/set-last-position\nplanned_trip_id, lat, lng, speed
+  API -> TripController: setLastPosition(request)
+  TripController -> DB: Validasi planned trip dan driver
+  DB --> TripController: Data planned trip aktif
+
+  alt Trip aktif dan driver berwenang
+    TripController -> DB: Update last_position_lat\nlast_position_lng
+    DB --> TripController: Posisi terakhir tersimpan
+    TripController -> Event: broadcast(channel, lat, lng, speed)
+    Event -> Echo: Publish TripPositionUpdated
+    Echo -> FEAdmin: Kirim data posisi terbaru
+    FEAdmin -> Map: Perbarui marker bus dan info speed
+    Map --> Admin: Lokasi bus bergerak di dashboard
+    TripController -> DB: Cek stop berikutnya,\npenumpang pickup/drop-off,\ndan jarak ke halte
+    DB --> TripController: Data operasional perjalanan
+    TripController --> API: Response success dan info next_stop
+    API --> FEDriver: Informasi stop berikutnya
+  else Trip belum aktif / sudah selesai / tidak berwenang
+    TripController --> API: Response error
+    API --> FEDriver: Tampilkan pesan gagal kirim lokasi
+  end
+end
+
+== Polling Cadangan Dashboard ==
+loop Setiap 10 detik
+  FEAdmin -> API: GET /planned-trips/on-route\nBearer token admin
+  API -> TripController: getOnRouteTrips()
+  TripController -> DB: Ambil posisi terakhir running trips
+  DB --> TripController: Data posisi terbaru
+  TripController --> API: Daftar running trips
+  API --> FEAdmin: Response posisi terbaru
+  FEAdmin -> Map: Sinkronisasi marker jika realtime terlambat
+end
+
+== Driver Mengakhiri Perjalanan ==
+Driver -> FEDriver: Tekan tombol selesai perjalanan
+FEDriver -> API: POST /planned-trips/start-stop\nplanned_trip_id, mode=0
+API -> TripController: startStopPlannedTrip(request)
+TripController -> DB: Validasi trip aktif dan driver
+DB --> TripController: Data planned trip
+TripController -> DB: Update ended_at\njika charter, status menjadi completed
+DB --> TripController: Perjalanan selesai
+TripController --> API: Response success
+API --> FEDriver: Perjalanan selesai
+FEAdmin -> API: GET /planned-trips/on-route
+API --> FEAdmin: Trip tidak lagi masuk running trips
+FEAdmin -> Map: Hapus / tidak tampilkan marker bus selesai
+Map --> Admin: Dashboard hanya menampilkan trip aktif
+
+@enduml

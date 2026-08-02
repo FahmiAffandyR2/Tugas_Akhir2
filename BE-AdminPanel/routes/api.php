@@ -37,7 +37,7 @@ Route::group(['prefix' => 'coupons'], function () {
 });
 
 Route::group(['prefix' => 'google-routes'], function () {
-    Route::get('/compute-route', [Api\GoogleRouteController::class, 'getRoute'])->middleware(['auth:sanctum', 'admin']);
+    Route::get('/compute-route', [Api\GoogleRouteController::class, 'getRoute'])->middleware(['auth:sanctum']);
 });
 
 Route::group(['prefix' => 'users'], function () {
@@ -235,6 +235,13 @@ Route::group(['prefix' => 'buses'], function() {
   Route::get('/available-drivers', [Api\BusController::class, 'getAvailableDrivers']);
 });
 
+Route::group(['prefix' => 'fleet-depots', 'middleware' => ['auth:sanctum', 'admin']], function() {
+  Route::get('/', [Api\FleetDepotController::class, 'index']);
+  Route::post('/', [Api\FleetDepotController::class, 'store']);
+  Route::put('/{fleetDepot}', [Api\FleetDepotController::class, 'update']);
+  Route::delete('/{fleetDepot}', [Api\FleetDepotController::class, 'destroy']);
+});
+
 Route::group(['prefix' => 'auth'], function () {
   Route::post('/login', [Api\AuthController::class, 'login']);
   Route::post('/loginViaToken', [Api\AuthController::class, 'loginViaToken']);
@@ -242,11 +249,24 @@ Route::group(['prefix' => 'auth'], function () {
   Route::post('/reset-password', [Api\AuthController::class, 'resetPassword']);
   Route::post('/createCustomer', [Api\AuthController::class, 'createCustomer']);
   Route::post('/createDriver', [Api\AuthController::class, 'createDriver']);
-  Route::post('/register-driver', [Api\AuthController::class, 'registerDriver']);
+  Route::post('/register-driver', [Api\AuthController::class, 'registerDriver'])->middleware(['auth:sanctum', 'admin']);
   Route::post('/register-customer', [Api\AuthController::class, 'registerCustomer']);
 
   //verifyUser
   Route::post('/verify-user', [Api\AuthController::class, 'verifyUser'])->middleware(['auth:sanctum']);
+});
+
+Route::group(['prefix' => 'charter-bookings', 'middleware' => ['auth:sanctum']], function () {
+  Route::get('/mine', [Api\CharterBookingController::class, 'customerIndex'])->middleware('customer');
+  Route::post('/', [Api\CharterBookingController::class, 'store'])->middleware('customer');
+  Route::post('/{charterBooking}/payment', [Api\CharterBookingController::class, 'submitPayment'])->middleware('customer');
+  Route::get('/{charterBooking}/invoice', [Api\CharterBookingController::class, 'invoice']);
+  Route::post('/{charterBooking}/cancel-rejected-payment', [Api\CharterBookingController::class, 'cancelRejectedPayment'])->middleware('customer');
+  Route::get('/admin', [Api\CharterBookingController::class, 'adminIndex'])->middleware('admin');
+  Route::get('/admin-assignment-options', [Api\CharterBookingController::class, 'assignmentOptions'])->middleware('admin');
+  Route::put('/admin/{charterBooking}', [Api\CharterBookingController::class, 'adminUpdate'])->middleware('admin');
+  Route::post('/admin/{charterBooking}/payment-review', [Api\CharterBookingController::class, 'reviewPayment'])->middleware('admin');
+  Route::get('/admin/{charterBooking}/payment-proof', [Api\CharterBookingController::class, 'paymentProof'])->middleware('admin');
 });
 
 

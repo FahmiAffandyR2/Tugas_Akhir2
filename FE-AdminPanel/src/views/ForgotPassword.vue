@@ -43,7 +43,7 @@
     </form>
     </v-card-text>
         <v-card-text class="d-flex align-center justify-center flex-wrap mt-2">
-          <router-link :to="{ name:'pages-login' }">
+          <router-link to="/login">
             Go to login page
           </router-link>
         </v-card-text>
@@ -106,10 +106,10 @@ export default {
       const payload = {
         email: this.email,
       };
-      AuthService.resetPassword(payload)
-        .then(() => (this.message = "Reset password email sent."))
+      AuthService.forgotPassword(payload)
+        .then((response) => (this.message = response.data.message || "Reset password email sent."))
         .catch((error) => (
-          this.error = error.response.data)
+          this.error = getError(error))
           );
     },
   },

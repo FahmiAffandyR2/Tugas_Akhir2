@@ -52,15 +52,24 @@ export default {
       const payload = {
         email: this.email,
         password: this.password,
-        portal: 'internal',
+        portal: 'all',
       };
       this.error = null;
       try {
-        await AuthService.login(payload);
+        const isLoggedIn = await AuthService.login(payload);
+        if (isLoggedIn !== true) return;
+        const role = Number(localStorage.getItem('internalRole') || localStorage.getItem('customerRole') || localStorage.getItem('userRole'));
+        if (role === 1) {
+          this.$store.dispatch("auth/setGuest", { value: "isNotGuest" });
+          this.$router.push('/customer/beranda').catch(error => {
+            if (error && error.name !== 'NavigationDuplicated') throw error;
+          });
+          return;
+        }
         const authUser = await this.$store.dispatch("auth/getAuthUser");
         if (authUser) {
           this.$store.dispatch("auth/setGuest", { value: "isNotGuest" });
-          const destination = Number(localStorage.getItem('userRole')) === 2
+          const destination = role === 2
             ? '/driver/beranda'
             : '/dashboard';
           this.$router.push(destination).catch(error => {

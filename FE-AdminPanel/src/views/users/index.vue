@@ -7,6 +7,15 @@
         {{getIcon(userType)}}
       </v-icon>
         <span class="pl-2">{{capitalizeFirstLetter(userType)}}</span>
+        <v-spacer></v-spacer>
+        <v-btn
+          v-if="userType === 'drivers'"
+          color="primary"
+          @click="openCreateDriverDialog"
+        >
+          <v-icon left>mdi-plus</v-icon>
+          Tambah Driver
+        </v-btn>
       </v-card-title>
       <v-tabs v-model="active_tab" show-arrows class="my-2">
         <v-tab v-for="tab in tabs" :key="tab.idx">
@@ -44,6 +53,71 @@
 
       </v-tabs-items>
     </v-card>
+    <v-dialog v-model="createDriverDialog" max-width="520" persistent>
+      <v-card>
+        <v-card-title>
+          <v-icon color="primary" class="mr-2">mdi-account-plus</v-icon>
+          Tambah Driver
+        </v-card-title>
+        <v-card-text>
+          <v-form ref="createDriverForm" v-model="createDriverValid" @submit.prevent="createDriver">
+            <v-text-field
+              v-model="newDriver.name"
+              label="Nama driver"
+              :rules="[driverRules.required]"
+              autocomplete="name"
+              outlined
+              dense
+            ></v-text-field>
+            <v-text-field
+              v-model="newDriver.email"
+              label="Email login"
+              :rules="[driverRules.required, driverRules.email]"
+              autocomplete="email"
+              outlined
+              dense
+            ></v-text-field>
+            <v-text-field
+              v-model="newDriver.tel_number"
+              label="Nomor telepon"
+              autocomplete="tel"
+              outlined
+              dense
+            ></v-text-field>
+            <v-text-field
+              v-model="newDriver.password"
+              label="Password"
+              :type="showDriverPassword ? 'text' : 'password'"
+              :append-icon="showDriverPassword ? 'mdi-eye-off' : 'mdi-eye'"
+              :rules="[driverRules.required, driverRules.password]"
+              autocomplete="new-password"
+              outlined
+              dense
+              @click:append="showDriverPassword = !showDriverPassword"
+            ></v-text-field>
+            <v-text-field
+              v-model="newDriver.password_confirmation"
+              label="Konfirmasi password"
+              :type="showDriverPassword ? 'text' : 'password'"
+              :rules="[
+                driverRules.required,
+                value => value === newDriver.password || 'Konfirmasi password tidak sama',
+              ]"
+              autocomplete="new-password"
+              outlined
+              dense
+            ></v-text-field>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn text @click="closeCreateDriverDialog">Batal</v-btn>
+          <v-btn color="primary" :loading="isSubmit" @click="createDriver">
+            Simpan Driver
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-dialog v-if="selectedDriver" v-model="busesDialog" max-width="390">
       <v-card>
         <v-card-title class="text-h5"> Select bus for '{{ selectedDriver.name}}' </v-card-title>
@@ -130,12 +204,27 @@ export default {
       underReviewUsers: [],
       availableBuses: [],
       dialog: false,
+      createDriverDialog: false,
+      createDriverValid: false,
       busesDialog: false,
       loadingBuses: false,
       isLoading: false,
       isSubmit: false,
       selectedUser: null,
       selectedDriver: null,
+      showDriverPassword: false,
+      newDriver: {
+        name: '',
+        email: '',
+        tel_number: '',
+        password: '',
+        password_confirmation: '',
+      },
+      driverRules: {
+        required: value => !!value || 'Wajib diisi',
+        email: value => /.+@.+\..+/.test(value) || 'Email tidak valid',
+        password: value => (value && value.length >= 8) || 'Password minimal 8 karakter',
+      },
       tabs: [],
       driversTabs: [
         { idx: 0, title: "Active", icon: mdiAirplane },
@@ -246,6 +335,67 @@ export default {
         })
         .then(() => {
           this.isLoading = false;
+        });
+    },
+    openCreateDriverDialog() {
+      this.createDriverDialog = true;
+    },
+    closeCreateDriverDialog() {
+      this.createDriverDialog = false;
+      this.showDriverPassword = false;
+      this.newDriver = {
+        name: '',
+        email: '',
+        tel_number: '',
+        password: '',
+        password_confirmation: '',
+      };
+      this.$nextTick(() => {
+        if (this.$refs.createDriverForm) this.$refs.createDriverForm.resetValidation();
+      });
+    },
+    getErrorMessage(error) {
+      const data = error && error.response ? error.response.data : null;
+      if (data && data.errors) {
+        const firstKey = Object.keys(data.errors)[0];
+        if (firstKey && data.errors[firstKey] && data.errors[firstKey][0]) {
+          return data.errors[firstKey][0];
+        }
+      }
+      return (data && data.message) || (error && error.message) || 'Terjadi kesalahan.';
+    },
+    createDriver() {
+      if (this.$refs.createDriverForm && !this.$refs.createDriverForm.validate()) return;
+
+      this.isSubmit = true;
+      auth.registerDriver({
+        name: this.newDriver.name,
+        email: this.newDriver.email,
+        tel_number: this.newDriver.tel_number,
+        password: this.newDriver.password,
+        password_confirmation: this.newDriver.password_confirmation,
+      })
+        .then((response) => {
+          this.$notify({
+            title: "Success",
+            text: response.data.message || "Driver berhasil dibuat",
+            type: "success",
+          });
+          this.active_tab = 0;
+          this.closeCreateDriverDialog();
+          this.loadUsers();
+        })
+        .catch((error) => {
+          const message = this.getErrorMessage(error);
+          this.$notify({
+            title: "Error",
+            text: message,
+            type: "error",
+          });
+          this.$swal("Error", message, "error");
+        })
+        .then(() => {
+          this.isSubmit = false;
         });
     },
     viewUser(user)

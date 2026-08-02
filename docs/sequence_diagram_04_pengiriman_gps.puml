@@ -1,0 +1,53 @@
+@startuml
+title Sequence Diagram Pengiriman Data GPS
+
+skinparam backgroundColor #FFFFFF
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #777777
+  LifeLineBackgroundColor #F8F8F8
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor #FFFFFF
+  DatabaseBorderColor #333333
+  DatabaseBackgroundColor #FFFFFF
+}
+
+actor "Driver" as Driver
+actor "Admin PO" as Admin
+participant "Frontend Driver\n(Aplikasi Driver)" as FEDriver
+participant "Laravel API" as API
+participant "TripController" as TripController
+database "Database\n(MySQL)" as DB
+participant "Broadcast Event\nTripPositionUpdated" as Event
+participant "Laravel Echo /\nRealtime Channel" as Echo
+participant "Frontend Admin\n(Vue Dashboard)" as FEAdmin
+participant "Leaflet Map /\nOpenStreetMap" as Map
+
+loop Setiap interval GPS driver
+  Driver -> FEDriver: GPS menghasilkan koordinat
+  FEDriver -> API: POST /planned-trips/set-last-position\nplanned_trip_id, lat, lng, speed
+  API -> TripController: setLastPosition(request)
+  TripController -> DB: Validasi planned trip\ndan driver
+  DB --> TripController: Data planned trip aktif
+
+  alt Trip aktif dan driver berwenang
+    TripController -> DB: Update last_position_lat\ndan last_position_lng
+    DB --> TripController: Posisi terakhir tersimpan
+    TripController -> Event: Broadcast data\nlat, lng, speed
+    Event -> Echo: Publish TripPositionUpdated
+    Echo -> FEAdmin: Kirim posisi terbaru
+    FEAdmin -> Map: Update marker bus
+    Map --> Admin: Lokasi bus bergerak\npada dashboard
+    TripController -> DB: Cek stop berikutnya,\npickup, drop-off,\ndan jarak ke halte
+    DB --> TripController: Data operasional perjalanan
+    TripController --> API: Response success\ndan info next_stop
+    API --> FEDriver: Informasi stop berikutnya
+  else Trip belum aktif, selesai,\natau driver tidak berwenang
+    TripController --> API: Response error
+    API --> FEDriver: Gagal mengirim lokasi
+    FEDriver --> Driver: Tampilkan pesan gagal
+  end
+end
+
+@enduml

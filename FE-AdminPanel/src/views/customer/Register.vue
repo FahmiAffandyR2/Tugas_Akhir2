@@ -32,7 +32,7 @@
             </v-checkbox>
             <v-btn type="submit" block large color="primary" class="register-btn mt-2" :loading="submitting">Daftar sebagai Customer</v-btn>
           </v-form>
-          <div class="text-center mt-6">Sudah memiliki akun? <router-link to="/customer/login" class="font-weight-bold">Masuk di sini</router-link></div>
+          <div class="text-center mt-6">Sudah memiliki akun? <router-link to="/login" class="font-weight-bold">Masuk di sini</router-link></div>
         </v-col>
       </v-row>
     </v-card>
@@ -59,7 +59,7 @@ export default {
       try {
         const response=await AuthService.registerCustomer(this.form)
         this.$notify({type:'success',title:'Registrasi berhasil',text:response.data.message})
-        await this.$router.push({path:'/customer/login',query:{registered:'1'}})
+        await this.$router.push({path:'/login',query:{registered:'1'}})
       } catch(error) {
         const data=error.response&&error.response.data; const errors=data&&data.errors
         this.serverError=errors?Object.values(errors).reduce((all,messages)=>all.concat(messages),[]).join(' '):(data&&data.message)||'Registrasi gagal. Silakan coba kembali.'
@@ -70,5 +70,5 @@ export default {
 </script>
 
 <style scoped>
-.customer-register{min-height:100vh;background:linear-gradient(135deg,#f4efff,#f7f8fc)}.register-card{width:100%;max-width:1120px;border-radius:22px}.hero-panel{min-height:690px;color:#fff;background:linear-gradient(145deg,#6427cf,#8c4af0 58%,#ad73ff)}.hero-copy{color:rgba(255,255,255,.82);line-height:1.6}.register-btn{border-radius:11px;text-transform:none}@media(max-width:600px){.register-card{border-radius:16px}}
+.customer-register{min-height:100vh;background:#f5f6fa}.register-card{width:100%;max-width:1120px;border-radius:22px}.hero-panel{min-height:690px;color:#fff;background-image:linear-gradient(90deg,rgba(18,14,28,.72),rgba(18,14,28,.22)),url('~@/assets/images/auth/bus-rental-hero.jpg');background-size:cover;background-position:center}.hero-copy{color:rgba(255,255,255,.86);line-height:1.6}.register-btn{border-radius:11px;text-transform:none}@media(max-width:600px){.register-card{border-radius:16px}}
 </style>

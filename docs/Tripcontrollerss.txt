@@ -1,0 +1,50 @@
+public function index()
+{
+    $relations = ['route', 'driver'];
+    $activeTrips = $this->tripRepository->allWhere(['*'], $relations, [['status_id', '=', 1]]);
+    $trashedTrips = $this->tripRepository->allWhere(['*'], $relations, [['status_id', '=', 3]]);
+    $suspensions = $this->suspendedTripRepository->allWhere(['*'], ['trip', 'trip.route']);
+
+    foreach ($activeTrips as $trip) {
+        $plannedTrips = $this->plannedTripRepository->findByWhere(
+            ['trip_id' => $trip->id], ['*'], ['plannedTripDetail.stop']
+        );
+
+        if ($plannedTrips->isEmpty()) continue;
+        $stopTimes = [];
+
+        foreach ($plannedTrips->pluck('plannedTripDetail')->flatten() as $detail) {
+            $id = $detail->stop_id;
+            $stopTimes[$id] ??= [
+                'planned_time' => $detail->planned_timestamp,
+                'avg_diff_pre' => 0, 'avg_diff_post' => 0,
+                'sum_pre' => 0, 'sum_post' => 0,
+                'count_pre' => 0, 'count_post' => 0,
+                'stop_name' => $detail->stop->name,
+            ];
+
+            if (!$detail->actual_timestamp) continue;
+
+            $diff = Carbon::parse($detail->actual_timestamp)
+                ->diffInMinutes(Carbon::parse($detail->planned_timestamp), false);
+
+            $type = $diff > 0 ? 'pre' : 'post';
+            $stopTimes[$id]["sum_$type"] += abs($diff);
+            $stopTimes[$id]["count_$type"]++;
+
+            foreach (['pre', 'post'] as $key) {
+                $count = $stopTimes[$id]["count_$key"];
+                $stopTimes[$id]["avg_diff_$key"] = $count
+                    ? round($stopTimes[$id]["sum_$key"] / $count) : 0;
+            }
+        }
+
+        $trip->stopTimes = $stopTimes;
+    }
+
+    return response()->json([
+        'activeTrips' => $activeTrips,
+        'suspendedTrips' => $suspensions,
+        'trashedTrips' => $trashedTrips,
+    ], 200);
+}

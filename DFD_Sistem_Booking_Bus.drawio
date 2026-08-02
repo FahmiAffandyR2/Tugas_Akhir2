@@ -1,0 +1,356 @@
+<mxfile host="app.diagrams.net" modified="2026-07-29T00:00:00.000Z" agent="5.0" version="21.0.0" type="device">
+  <diagram id="dfd-sistem-booking-bus" name="DFD Level 1">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ==================== EXTERNAL ENTITIES (Biru) ==================== -->
+        
+        <!-- Customer / Penyewa -->
+        <mxCell id="entity1" value="Customer / Penyewa" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="120" y="850" width="160" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Driver -->
+        <mxCell id="entity2" value="Driver" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="680" y="850" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Admin -->
+        <mxCell id="entity3" value="Admin" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;fontStyle=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="850" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== PROSES (Ungu) ==================== -->
+
+        <!-- 1.0 Manajemen Akses & Autentikasi -->
+        <mxCell id="process1" value="1.0&#xa;Manajemen Akses&#xa;&amp; Autentikasi" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="750" y="580" width="160" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- 2.0 Kelola Data Master -->
+        <mxCell id="process2" value="2.0&#xa;Kelola Data Master" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="540" y="40" width="160" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- 3.0 Transaksi Booking & Pembayaran -->
+        <mxCell id="process3" value="3.0&#xa;Transaksi Booking&#xa;&amp; Pembayaran" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="530" y="310" width="170" height="120" as="geometry"/>
+        </mxCell>
+
+        <!-- 4.0 Operasional & Live Tracking -->
+        <mxCell id="process4" value="4.0&#xa;Operasional &amp;&#xa;Live Tracking" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="545" y="580" width="150" height="110" as="geometry"/>
+        </mxCell>
+
+        <!-- 5.0 Ekstraksi Laporan -->
+        <mxCell id="process5" value="5.0&#xa;Ekstraksi Laporan" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="1050" width="150" height="100" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== DATA STORE (Oranye) ==================== -->
+
+        <!-- D1: Akun -->
+        <mxCell id="store1" value="D1: Akun" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="805" y="850" width="120" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- D2: Armada Bus -->
+        <mxCell id="store2" value="D2: Armada Bus" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="350" y="160" width="130" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- D3: Data Driver -->
+        <mxCell id="store3" value="D3: Data Driver" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="520" y="160" width="130" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- D4: Rute & Tarif -->
+        <mxCell id="store4" value="D4: Rute &amp; Tarif" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="690" y="160" width="130" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- D5: Transaksi Booking -->
+        <mxCell id="store5" value="D5: Transaksi Booking" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="645" y="440" width="160" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- D6: Log Tracking -->
+        <mxCell id="store6" value="D6: Log Tracking" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=2;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="360" y="850" width="140" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- ==================== DATA FLOWS (Panah) ==================== -->
+
+        <!-- Flow: Customer → 1.0 (Login, Data Penyewa) -->
+        <mxCell id="flow1" value="Login, Data Penyewa" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="entity1" target="process1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Flow: 1.0 → Customer (Info Akun Valid) -->
+        <mxCell id="flow2" value="Info Akun Valid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.3;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process1" target="entity1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="770"/>
+              <mxPoint x="168" y="770"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 1.0 ↔ Driver (Login) -->
+        <mxCell id="flow3" value="Login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process1" target="entity2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Flow: 1.0 → Driver (Info Akun Valid) -->
+        <mxCell id="flow4" value="Info Akun Valid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.3;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process1" target="entity2" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="798" y="770"/>
+              <mxPoint x="680" y="770"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 1.0 ↔ Admin (Login) -->
+        <mxCell id="flow5" value="Login" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process1" target="entity3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="910" y="770"/>
+              <mxPoint x="1340" y="770"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 1.0 → Admin (Info Akun Valid) -->
+        <mxCell id="flow6" value="Info Akun Valid" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.7;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process1" target="entity3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="960" y="664"/>
+              <mxPoint x="960" y="740"/>
+              <mxPoint x="1280" y="740"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 1.0 → D1: Akun (Verifikasi & Simpan) -->
+        <mxCell id="flow7" value="Verifikasi &amp; Simpan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process1" target="store1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="830" y="770"/>
+              <mxPoint x="865" y="770"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: Driver → 4.0 (Data GPS & Status Perjalanan) -->
+        <mxCell id="flow8" value="Data GPS &amp; Status Perjalanan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="entity2" target="process4" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="800"/>
+              <mxPoint x="620" y="800"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 4.0 → Customer (Info Live Tracking) -->
+        <mxCell id="flow9" value="Info Live Tracking" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.7;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process4" target="entity1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="545" y="750"/>
+              <mxPoint x="232" y="750"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 4.0 → D6: Log Tracking (Simpan Histori Lokasi) -->
+        <mxCell id="flow10" value="Simpan Histori Lokasi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process4" target="store6" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="545" y="750"/>
+              <mxPoint x="430" y="750"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: Admin → 2.0 (Input Data Bus, Driver, Rute) -->
+        <mxCell id="flow11" value="Input Data Bus, Driver, Rute" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="entity3" target="process2" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="800"/>
+              <mxPoint x="1240" y="90"/>
+              <mxPoint x="700" y="90"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 2.0 → Admin (Konfirmasi Simpan) -->
+        <mxCell id="flow12" value="Konfirmasi Simpan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process2" target="entity3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="90"/>
+              <mxPoint x="1200" y="800"/>
+              <mxPoint x="1280" y="800"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 2.0 → D2: Armada Bus (Simpan) -->
+        <mxCell id="flow13" value="Simpan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process2" target="store2" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="540" y="140"/>
+              <mxPoint x="415" y="140"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 2.0 → D3: Data Driver (Simpan) -->
+        <mxCell id="flow14" value="Simpan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process2" target="store3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Flow: 2.0 → D4: Rute & Tarif (Simpan) -->
+        <mxCell id="flow15" value="Simpan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process2" target="store4" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="700" y="140"/>
+              <mxPoint x="755" y="140"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: D2 → 3.0 (Cek Ketersediaan) -->
+        <mxCell id="flow16" value="Cek Ketersediaan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="store2" target="process3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="415" y="280"/>
+              <mxPoint x="415" y="280"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: D4 → 3.0 (Cek Harga Tarif) -->
+        <mxCell id="flow17" value="Cek Harga Tarif" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="store4" target="process3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="755" y="280"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: Customer → 3.0 (Data Booking & Pembayaran) -->
+        <mxCell id="flow18" value="Data Booking &amp; Pembayaran" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.7;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=1;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="entity1" target="process3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="232" y="800"/>
+              <mxPoint x="232" y="490"/>
+              <mxPoint x="530" y="490"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 3.0 → Customer (Info Bus, Harga, E-Ticket) -->
+        <mxCell id="flow19" value="Info Bus, Harga, E-Ticket" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0.2;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process3" target="entity1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="530" y="490"/>
+              <mxPoint x="152" y="490"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 3.0 → D5: Transaksi Booking (Simpan Data Transaksi) -->
+        <mxCell id="flow20" value="Simpan Data Transaksi" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process3" target="store5" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="370"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 3.0 → 4.0 (Jadwal & Info Rute) -->
+        <mxCell id="flow21" value="Jadwal &amp; Info Rute" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process3" target="process4" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Flow: 3.0 → Admin (Info Booking Baru) -->
+        <mxCell id="flow22" value="Info Booking Baru" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process3" target="entity3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1150" y="490"/>
+              <mxPoint x="1150" y="790"/>
+              <mxPoint x="1280" y="790"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: D5 → 4.0 (Baca Penugasan) -->
+        <mxCell id="flow23" value="Baca Penugasan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="store5" target="process4" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="645" y="560"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: Admin → 4.0 (Info Live Tracking Global) -->
+        <mxCell id="flow24" value="Info Live Tracking Global" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="entity3" target="process4" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1100" y="790"/>
+              <mxPoint x="1100" y="635"/>
+              <mxPoint x="695" y="635"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: D6 → 5.0 (Data Rekap Perjalanan) -->
+        <mxCell id="flow25" value="Data Rekap Perjalanan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="store6" target="process5" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="940"/>
+              <mxPoint x="1200" y="1100"/>
+              <mxPoint x="1320" y="1100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: Admin → 5.0 (Parameter Filter Waktu) -->
+        <mxCell id="flow26" value="Parameter Filter Waktu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="entity3" target="process5" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1200" y="940"/>
+              <mxPoint x="1200" y="1100"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 5.0 → Admin (File Laporan Operasional) -->
+        <mxCell id="flow27" value="File Laporan Operasional" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process5" target="entity3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1470" y="1100"/>
+              <mxPoint x="1470" y="940"/>
+              <mxPoint x="1340" y="940"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Flow: 5.0 → Admin (Data Rekap Penjualan) -->
+        <mxCell id="flow28" value="Data Rekap Penjualan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=1;entryDx=0;entryDy=0;strokeWidth=1.5;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" source="process5" target="entity3" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1395" y="990"/>
+              <mxPoint x="1420" y="990"/>
+              <mxPoint x="1420" y="900"/>
+              <mxPoint x="1340" y="900"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

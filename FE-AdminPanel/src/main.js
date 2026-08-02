@@ -8,6 +8,7 @@ import App from "./App.vue";
 import vuetify from "./plugins/vuetify";
 import router from "./router";
 import store from "./store";
+import registerServiceWorker from "./registerServiceWorker";
 
 import "./axios";
 import "./firebaseConfig";
@@ -53,10 +54,4 @@ const app = new Vue({
 
 window.vm = app;
 
-if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js').catch(error => {
-      console.error('Service worker registration failed', error)
-    })
-  })
-}
+registerServiceWorker();

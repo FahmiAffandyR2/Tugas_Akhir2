@@ -1,0 +1,42 @@
+@startuml
+title Sequence Diagram Driver Memulai Perjalanan
+
+skinparam backgroundColor #FFFFFF
+skinparam sequence {
+  ArrowColor #333333
+  ActorBorderColor #333333
+  LifeLineBorderColor #777777
+  LifeLineBackgroundColor #F8F8F8
+  ParticipantBorderColor #333333
+  ParticipantBackgroundColor #FFFFFF
+  DatabaseBorderColor #333333
+  DatabaseBackgroundColor #FFFFFF
+}
+
+actor "Driver" as Driver
+participant "Frontend Driver\n(Aplikasi Driver)" as FEDriver
+participant "Laravel API" as API
+participant "TripController" as TripController
+database "Database\n(MySQL)" as DB
+
+Driver -> FEDriver: Menekan tombol mulai perjalanan
+FEDriver -> API: POST /planned-trips/start-stop\nplanned_trip_id, mode=1
+API -> TripController: startStopPlannedTrip(request)
+TripController -> DB: Cari planned trip
+DB --> TripController: Data planned trip
+TripController -> DB: Validasi driver\nsesuai dengan trip
+DB --> TripController: Hasil validasi
+
+alt Driver sesuai dan trip belum dimulai
+  TripController -> DB: Update started_at
+  DB --> TripController: Status perjalanan tersimpan
+  TripController --> API: Response success
+  API --> FEDriver: Perjalanan aktif
+  FEDriver --> Driver: Tampilkan status perjalanan aktif
+else Driver tidak sesuai atau trip tidak valid
+  TripController --> API: Response error
+  API --> FEDriver: Gagal memulai perjalanan
+  FEDriver --> Driver: Tampilkan pesan gagal
+end
+
+@enduml

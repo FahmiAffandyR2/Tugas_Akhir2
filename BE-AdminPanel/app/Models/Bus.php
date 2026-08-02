@@ -16,4 +16,9 @@ class Bus extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function depot()
+    {
+        return $this->belongsTo(FleetDepot::class, 'depot_id');
+    }
 }

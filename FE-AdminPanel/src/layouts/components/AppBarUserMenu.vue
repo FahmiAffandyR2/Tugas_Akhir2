@@ -148,9 +148,24 @@ export default {
     getFullName() {
       return this.adminName
     },
-    logout()
+    async logout()
     {
-      auth.logout()
+      const confirmed = await this.confirmLogout()
+      if (confirmed) auth.logout()
+    },
+    async confirmLogout() {
+      if (!this.$swal) return window.confirm('Apakah Anda yakin ingin keluar?')
+
+      const result = await this.$swal.fire({
+        title: 'Keluar dari aplikasi?',
+        text: 'Anda perlu login kembali untuk masuk ke akun ini.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, keluar',
+        cancelButtonText: 'Batal',
+      })
+
+      return result.isConfirmed
     }
   }
 }

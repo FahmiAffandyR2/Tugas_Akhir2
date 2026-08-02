@@ -1,0 +1,180 @@
+<mxfile host="app.diagrams.net" modified="2026-07-29T00:00:00.000Z" agent="Codex" version="21.0.0" type="device">
+  <diagram id="use-case-adminpanel" name="Use Case Diagram">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="title" value="Use Case Diagram AdminPanel Booking Bus" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=22;" vertex="1" parent="1">
+          <mxGeometry x="520" y="20" width="620" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="system" value="Sistem AdminPanel Booking Bus" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;strokeWidth=2;fontStyle=1;fontSize=16;verticalAlign=top;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="280" y="80" width="1060" height="1030" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="guest" value="Guest" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="80" y="130" width="40" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="customer" value="Customer / Penyewa" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="80" y="400" width="40" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="driver" value="Driver" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="80" y="780" width="40" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="admin" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1510" y="470" width="40" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="akses-box" value="Manajemen Akses" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontStyle=1;fontSize=15;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="320" y="130" width="310" height="290" as="geometry"/>
+        </mxCell>
+        <mxCell id="customer-box" value="Transaksi Booking &amp; Komplain" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontStyle=1;fontSize=15;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="320" y="430" width="310" height="350" as="geometry"/>
+        </mxCell>
+        <mxCell id="driver-box" value="Operasional Perjalanan" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontStyle=1;fontSize=15;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="660" y="430" width="310" height="350" as="geometry"/>
+        </mxCell>
+        <mxCell id="master-box" value="Manajemen Data Master" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontStyle=1;fontSize=15;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="660" y="130" width="320" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="ops-box" value="Monitoring, Laporan &amp; Pengaturan" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#000000;fontStyle=1;fontSize=15;verticalAlign=top;spacingTop=8;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="130" width="300" height="650" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc-login" value="Login" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="395" y="180" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-register" value="Register Akun" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="395" y="240" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-reset" value="Reset / Ubah Password" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="375" y="300" width="200" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-profile" value="Kelola Profil" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="395" y="355" width="160" height="45" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc-dashboard" value="Lihat Dashboard" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="180" width="160" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-users" value="Kelola Pengguna" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="740" y="180" width="160" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-buses" value="Kelola Armada Bus" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="725" y="240" width="190" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-routes" value="Kelola Rute &amp; Halte" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="720" y="300" width="200" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-trips" value="Kelola Jadwal &amp; Penugasan" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="490" width="230" height="45" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc-search" value="Cari Rute / Jadwal" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="390" y="485" width="170" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-book" value="Booking Bus &amp; Pembayaran" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="365" y="545" width="220" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-my-booking" value="Lihat Status &amp; Riwayat Booking" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="350" y="605" width="250" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-proof" value="Upload Bukti Bayar" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="390" y="665" width="170" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-complaint" value="Kirim Komplain" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="400" y="725" width="150" height="45" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc-driver-schedule" value="Lihat Jadwal Driver" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="725" y="555" width="180" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-start-stop" value="Kelola Status Perjalanan" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="705" y="615" width="220" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-gps" value="Update Posisi GPS" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="725" y="675" width="180" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-pickdrop" value="Kelola Penumpang Perjalanan" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="735" width="230" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-driver-info" value="Kelola Info Driver &amp; Wallet" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="700" y="820" width="230" height="45" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc-admin-booking" value="Kelola Booking &amp; Pembayaran" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1035" y="250" width="250" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-reservation" value="Kelola Reservasi &amp; Komplain" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="320" width="230" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-live" value="Pantau Live Tracking" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="390" width="200" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-admin-complaint" value="Kelola Kupon &amp; Notifikasi" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="450" width="230" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-conflict" value="Cek Konflik Driver" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="510" width="200" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-coupon" value="Kelola Laporan Keuangan" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="570" width="220" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-payment" value="Kelola Settings &amp; Dokumen" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1045" y="630" width="230" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-setting" value="Aktivasi Sistem" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1075" y="690" width="170" height="45" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="uc-include-assign" value="Assign Driver / Bus" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="720" y="920" width="190" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="uc-include-payment" value="Review Bukti Pembayaran" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=12;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="1015" y="920" width="220" height="45" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e-guest-login" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="guest" target="uc-login"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-guest-register" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="guest" target="uc-register"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-guest-reset" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="guest" target="uc-reset"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-guest-search" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="guest" target="uc-search"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e-customer-login" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="customer" target="uc-login"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-customer-profile" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="customer" target="uc-profile"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-customer-search" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="customer" target="uc-search"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-customer-book" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="customer" target="uc-book"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-customer-my-booking" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="customer" target="uc-my-booking"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-customer-proof" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="customer" target="uc-proof"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-customer-complaint" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="customer" target="uc-complaint"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e-driver-login" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="driver" target="uc-login"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-driver-profile" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="driver" target="uc-profile"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-driver-schedule" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="driver" target="uc-driver-schedule"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-driver-start-stop" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="driver" target="uc-start-stop"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-driver-gps" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="driver" target="uc-gps"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-driver-pickdrop" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="driver" target="uc-pickdrop"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-driver-info" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="driver" target="uc-driver-info"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="e-admin-login" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-login"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-profile" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-profile"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-dashboard" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-dashboard"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-users" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-users"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-buses" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-buses"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-routes" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-routes"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-trips" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-trips"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-booking" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-admin-booking"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-reservation" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-reservation"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-live" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-live"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-complaint" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-admin-complaint"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-conflict" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-conflict"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-coupon" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-coupon"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-payment" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-payment"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="e-admin-setting" value="" style="endArrow=none;html=1;rounded=0;" edge="1" parent="1" source="admin" target="uc-setting"><mxGeometry relative="1" as="geometry"/></mxCell>
+
+        <mxCell id="inc-trip-assign" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;" style="endArrow=open;html=1;rounded=0;dashed=1;fontSize=11;" edge="1" parent="1" source="uc-trips" target="uc-include-assign"><mxGeometry relative="1" as="geometry"/></mxCell>
+        <mxCell id="inc-booking-payment" value="&amp;lt;&amp;lt;include&amp;gt;&amp;gt;" style="endArrow=open;html=1;rounded=0;dashed=1;fontSize=11;" edge="1" parent="1" source="uc-admin-booking" target="uc-include-payment"><mxGeometry relative="1" as="geometry"/></mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,62 @@
+public function setLastPosition(Request $request)
+{
+    $data = $request->validate([
+        'planned_trip_id' => 'required|integer',
+        'lat' => 'required|numeric', 'lng' => 'required|numeric',
+        'speed' => 'required|numeric',
+    ]);
+
+    $trip = $this->plannedTripRepository->findById(
+        $data['planned_trip_id'], ['*'], ['plannedTripDetail.stop']
+    );
+
+    try {
+        $trip->update([
+            'last_position_lat' => $data['lat'],
+            'last_position_lng' => $data['lng'],
+        ]);
+        $locationSaved = true;
+
+        try {
+            broadcast(new \App\Events\TripPositionUpdated(
+                $trip->channel, json_encode(array_merge($data, ['id' => null]))
+            ));
+        } catch (\Throwable $e) {
+            Log::warning('Realtime broadcast failed: '.$e->getMessage());
+        }
+
+        $result = DB::transaction(function () use ($trip, $data) {
+            $detail = $trip->plannedTripDetail->firstWhere('actual_timestamp', null);
+            if (!$detail) return ['success' => true, 'next_stop' => null];
+
+            $stop = $detail->stop;
+            $passengers = $this->reservationRepository->findByWhere([
+                ['planned_trip_id', '=', $data['planned_trip_id']]
+            ]);
+            $pickups = $passengers->where('ride_status', 0)
+                ->where('start_stop_id', $stop->id);
+            $dropoffs = $passengers->filter(fn($p) => $p->ride_status == 1 &&
+                $this->distance($data['lat'], $data['lng'],
+                    $p->end_point_lat, $p->end_point_lng) < 2)->values();
+            $distance = $this->distance(
+                $data['lat'], $data['lng'], $stop->lat, $stop->lng
+            ) * 1000;
+
+            if ($distance < $this->settingRepository->all()->first()
+                    ->distance_to_stop_to_mark_arrived && $pickups->isEmpty())
+                $detail->update(['actual_timestamp' => Carbon::now()]);
+
+            return ['success' => true, 'next_stop' => $stop,
+                'next_stop_planned_time' => $detail->planned_timestamp,
+                'distance_to_next_stop' => $distance,
+                'count_passengers_to_be_picked_up' => $pickups->count(),
+                'passengers_to_be_dropped_off' => $dropoffs];
+        });
+
+        return response()->json($result);
+    } catch (\Throwable $e) {
+        return response()->json($locationSaved
+            ? ['success' => true, 'warning' => 'Location saved; detail processing failed']
+            : ['success' => false, 'message' => $e->getMessage()], $locationSaved ? 200 : 422);
+    }
+}

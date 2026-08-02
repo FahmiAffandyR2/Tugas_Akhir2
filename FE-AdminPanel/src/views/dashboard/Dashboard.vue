@@ -17,20 +17,7 @@
       <v-row class="match-height">
         <v-col
           cols="12"
-          sm="4"
-        >
-          <statistics-card-vertical
-            :change="totalReservations.change"
-            :color="totalReservations.color"
-            :icon="totalReservations.icon"
-            :statistics="totalReservations.amount"
-            :stat-title="totalReservations.statTitle"
-            :subtitle="totalReservations.subtitle"
-          ></statistics-card-vertical>
-        </v-col>
-        <v-col
-          cols="12"
-          sm="4"
+          sm="6"
         >
           <statistics-card-vertical
             :change="totalDriversEarnings.change"
@@ -43,7 +30,7 @@
         </v-col>
         <v-col
           cols="12"
-          sm="4"
+          sm="6"
         >
           <statistics-card-vertical
             :change="totalRefunds.change"
@@ -158,7 +145,7 @@
 
 <script>
 // eslint-disable-next-line object-curly-newline
-import { mdiPoll, mdiCurrencyUsd, mdiCloseOctagonOutline } from '@mdi/js'
+import { mdiCurrencyUsd, mdiCloseOctagonOutline } from '@mdi/js'
 import StatisticsCardVertical from '@/components/statistics-card/StatisticsCardVertical.vue'
 import axios from 'axios'
 
@@ -181,12 +168,6 @@ export default {
   data() {
     return {
       isLoading: false,
-      totalReservations: {
-        statTitle: 'Total Reservations',
-        icon: mdiPoll,
-        color: 'success',
-        amount: '',
-      },
       bestTrips: [],
       plannedTripsCount: [],
       plannedTripsDates: [],
@@ -208,10 +189,6 @@ export default {
       totalAdminEarnings: null,
       allCounts:
       [
-        {
-          title: 'Reservations',
-          total: '',
-        },
         {
           title: 'Customers',
           total: '',
@@ -245,16 +222,14 @@ export default {
       axios
         .get(`/dashboard/all`)
         .then((response) => {
-          this.totalReservations.amount = response.data.totalReservations;
           this.totalDriversEarnings.amount = response.data.totalDriversEarnings;
           this.totalRefunds.amount = response.data.totalRefunds;
           this.totalAdminEarnings = response.data.totalAdminEarnings;
-          this.allCounts[0].total = response.data.totalReservationsCount;
-          this.allCounts[1].total = response.data.totalCustomers;
-          this.allCounts[2].total = response.data.totalDrivers;
-          this.allCounts[3].total = response.data.totalRoutes;
-          this.allCounts[4].total = response.data.totalStops;
-          this.allCounts[5].total = response.data.totalTrips;
+          this.allCounts[0].total = response.data.totalCustomers;
+          this.allCounts[1].total = response.data.totalDrivers;
+          this.allCounts[2].total = response.data.totalRoutes;
+          this.allCounts[3].total = response.data.totalStops;
+          this.allCounts[4].total = response.data.totalTrips;
           this.bestTrips = response.data.bestTrips;
           //merge bestTrips with bestTripsColors
           this.bestTrips.forEach((item, index) => {

@@ -65,6 +65,11 @@
         icon="mdi-bus-multiple"
       ></nav-menu-link>
       <nav-menu-link
+        title="Depo Armada"
+        :to="{ name: 'fleet-depots' }"
+        icon="mdi-garage-variant"
+      ></nav-menu-link>
+      <nav-menu-link
         title="Routes"
         :to="{ name: 'routes' }"
         icon="mdi-road-variant"
@@ -75,7 +80,7 @@
         icon="mdi-bus-stop"
       ></nav-menu-link>
       <nav-menu-link
-        title="Trips"
+        title="Jadwal Perjalanan"
         :to="{ name: 'trips' }"
         icon="mdi-bus-clock"
       ></nav-menu-link>
@@ -87,41 +92,14 @@
         ></nav-menu-link>
       <nav-menu-section-title title="REPORTS"></nav-menu-section-title>
       <nav-menu-link
+        title="Booking Bus"
+        :to="{ name: 'charter-bookings' }"
+        icon="mdi-clipboard-text-clock-outline"
+      ></nav-menu-link>
+      <nav-menu-link
         title="Time Table"
         :to="{ name: 'planned-trips' }"
         icon="mdi-airplane-clock"
-      ></nav-menu-link>
-      <nav-menu-link
-        title="Reservations"
-        :to="{ name: 'reservations' }"
-        icon="mdi-poll"
-      ></nav-menu-link>
-      <nav-menu-link
-        title="Complaints"
-        :to="{ name: 'complaints' }"
-        icon="mdi-comment-alert"
-      ></nav-menu-link>
-      <nav-menu-link
-        title="Driver Conflicts"
-        :to="{ name: 'driver-conflicts' }"
-        icon="mdi-alert-circle-outline"
-      ></nav-menu-link>
-      <nav-menu-section-title title="COUPONS"></nav-menu-section-title>
-      <nav-menu-link
-        title="Coupons"
-        :to="{ name: 'coupons' }"
-        icon="mdi-ticket-percent"
-      ></nav-menu-link>
-      <nav-menu-section-title title="PAYMENTS"></nav-menu-section-title>
-      <nav-menu-link
-        title="Upcoming Payments"
-        :to="{ name: 'upcoming-payments' }"
-        icon="mdi-clock-outline"
-      ></nav-menu-link>
-      <nav-menu-link
-        title="Redemptions"
-        :to="{ name: 'redemptions' }"
-        icon="mdi-cash-multiple"
       ></nav-menu-link>
       <nav-menu-section-title title="SETTINGS"></nav-menu-section-title>
       <nav-menu-link

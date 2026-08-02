@@ -32,8 +32,8 @@
                 v-bind="attrs"
                 v-on="on"
               >
-                <v-badge v-if="driversNotification.count !=0 || complaintsNotification.count !=0 "
-                color="error" :content="driversNotification.count + complaintsNotification.count">
+                <v-badge v-if="driversNotification.count !=0"
+                color="error" :content="driversNotification.count">
                   <v-icon>
                     {{ icons.mdiBellOutline }}
                   </v-icon>
@@ -44,7 +44,7 @@
                 </v-icon>
               </v-btn>
             </template>
-            <v-list v-if="driversNotification.count !=0 || complaintsNotification.count !=0 ">
+            <v-list v-if="driversNotification.count !=0">
               <v-list-item @click="viewDrivers"
               link v-if="driversNotification.count !=0">
                 <v-list-item-icon class="me-2">
@@ -67,30 +67,6 @@
                   </v-badge>
                 </v-list-item-action>
               </v-list-item>
-              <v-divider v-if="driversNotification.count !=0"></v-divider>
-              <v-list-item @click="viewComplaints"
-              link v-if="complaintsNotification.count != 0">
-                <v-list-item-icon class="me-2">
-                  <v-icon size="22">
-                    {{ complaintsNotification.icon }}
-                  </v-icon>
-                </v-list-item-icon>
-                <v-list-item-content>
-                  <v-list-item-title>
-                    {{ complaintsNotification.title }}
-                  </v-list-item-title>
-                </v-list-item-content>
-
-                <v-list-item-action>
-                  <v-badge
-                    inline
-                    color="error"
-                    :content="complaintsNotification.count"
-                  >
-                  </v-badge>
-                </v-list-item-action>
-              </v-list-item>
-
             </v-list>
             <v-list v-else>
               <v-list-item>
@@ -164,12 +140,6 @@ export default {
         icon: 'mdi-account-tie-hat',
         count: 0,
       },
-      complaintsNotification: 
-      {
-        title: 'Unresolved complaints',
-        icon: 'mdi-comment-alert',
-        count: 0,
-      },
       secureKey: null,
       isDrawerOpen: true,
       // Icons
@@ -190,7 +160,6 @@ export default {
   methods: {
     loadNotifications() {
       axios.get('/notifications/all').then((response) => {
-        this.complaintsNotification.count = response.data.unResolvedComplaintsCount;
         this.driversNotification.count = response.data.driversUnderReviewCount;
         this.adminProfileStore.name = response.data.adminName;
         this.adminProfileStore.avatar = response.data.adminAvatar;
@@ -213,10 +182,6 @@ export default {
     viewDrivers() {
       localStorage.tabIdxDrivers = 2;
       this.$router.push('/drivers');
-    },
-    viewComplaints() {
-      localStorage.tabIdxComplaints = 0;
-      this.$router.push('/complaints');
     },
   }
 }

@@ -14,6 +14,7 @@ use App\Repository\TripRepositoryInterface;
 use App\Repository\UserRefundRepositoryInterface;
 use App\Repository\PlannedTripRepositoryInterface;
 use Illuminate\Support\Facades\Log;
+use App\Models\CharterRevenueTransaction;
 
 class DashboardController extends Controller
 {
@@ -88,7 +89,8 @@ class DashboardController extends Controller
         // Stops
         // Trips
 
-        $reservationCount = $this->reservationRepository->all()->count();
+        $paidCharterTransactions = CharterRevenueTransaction::where('status', 'paid')->get();
+        $reservationCount = $this->reservationRepository->all()->count() + $paidCharterTransactions->count();
         $allUsers = $this->userRepository->all();
 
         $customerCount = $allUsers->filter(function ($value, $key) {
@@ -111,7 +113,8 @@ class DashboardController extends Controller
         //get total reservations
         $reservations = $this->reservationRepository->all(['*'], ['plannedTrip', 'plannedTrip.route', 'plannedTrip.trip']);
         //sum the paid prices of all reservations
-        $totalReservationsAmount = $reservations->sum('paid_price');
+        $charterRevenueAmount = $paidCharterTransactions->sum('amount');
+        $totalReservationsAmount = $reservations->sum('paid_price') + $charterRevenueAmount;
         //approximate the total reservations amount to 2 decimal places
         $totalReservationsAmount = number_format($totalReservationsAmount, 2);
 
@@ -138,7 +141,7 @@ class DashboardController extends Controller
         $totalDriversPayments = number_format($totalDriversPayments, 2);
 
         //sum the paid prices of all admin payments
-        $totalAdminPayments = $adminPayments->sum('amount');
+        $totalAdminPayments = $adminPayments->sum('amount') + $charterRevenueAmount;
         $totalAdminPayments = number_format($totalAdminPayments, 2);
 
 
