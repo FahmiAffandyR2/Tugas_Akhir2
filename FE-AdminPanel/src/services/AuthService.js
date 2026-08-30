@@ -6,6 +6,7 @@ import Router from '../router/index'
 
 const passwordLoginEndpoint = '/auth/login'
 const useFirebaseAuth = Keys.VUE_APP_AUTH_PROVIDER === 'firebase' && isFirebaseEnabled
+const canUseGoogleAuth = Boolean(Keys.GOOGLE_CLIENT_ID)
 
 function getDeviceName() {
   if (!window.vm || !window.vm.$browserDetect || !window.vm.$browserDetect.meta) return 'web';
@@ -55,6 +56,9 @@ export default {
   async login2(payload) {
     await authClient.get("/sanctum/csrf-cookie");
     return authClient.post("/login", payload);
+  },
+  canUseGoogleLogin() {
+    return canUseGoogleAuth
   },
   isUserLoggedIn(portal = 'internal') {
     let isAuthenticated = false
@@ -148,6 +152,91 @@ export default {
       return { success: false, message }
     }
   },
+  async loginWithGoogle(payload = {}) {
+    const portal = payload.portal || 'all'
+
+    if (!canUseGoogleAuth) {
+      return {
+        success: false,
+        message: 'Login Google belum dikonfigurasi.'
+      }
+    }
+
+    if (portal === 'all') {
+      clearAllSessions()
+    } else if (this.isUserLoggedIn(portal)) {
+      if (payload.notify) {
+        payload.notify({
+          title: 'Login Attempt',
+          text: 'You are already logged in!',
+          type: 'warning'
+        })
+      }
+      return false
+    }
+
+    // Build Google OAuth2 authorization URL
+    const clientId = Keys.GOOGLE_CLIENT_ID
+    const redirectUri = window.location.origin + '/auth/google/callback'
+    const scope = 'email profile openid'
+    const state = JSON.stringify({ portal })
+    const nonce = Math.random().toString(36).substring(2)
+
+    localStorage.setItem('googleOAuthState', state)
+    localStorage.setItem('googleOAuthNonce', nonce)
+
+    const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
+      + '?client_id=' + encodeURIComponent(clientId)
+      + '&redirect_uri=' + encodeURIComponent(redirectUri)
+      + '&response_type=code'
+      + '&scope=' + encodeURIComponent(scope)
+      + '&state=' + encodeURIComponent(state)
+      + '&nonce=' + encodeURIComponent(nonce)
+      + '&prompt=select_account'
+
+    window.location.href = authUrl
+    return 'redirecting'
+  },
+  async handleGoogleCallback(code, state) {
+    const portal = (JSON.parse(state || '{}').portal) || 'all'
+    try {
+      const response = await axios.post('/auth/google-login', {
+        code,
+        portal,
+        device_name: getDeviceName(),
+      })
+
+      const role = Number(response.data.user_data && response.data.user_data.role)
+      const actualPortal = portal === 'all' ? portalForRole(role) : portal
+      const allowed = portal === 'all'
+        ? [0, 1, 2].includes(role)
+        : (portal === 'customer' ? role === 1 : (role === 0 || role === 2))
+
+      if (!allowed) {
+        const error = Error(
+          portal === 'customer'
+            ? 'Akun ini bukan akun customer.'
+            : 'Akun ini tidak memiliki akses ke portal internal.'
+        )
+        error.name = 'Not authorized'
+        throw error
+      }
+
+      storeToken(response.data.token, actualPortal)
+      storeRole(response.data.user_data, actualPortal)
+      return { success: true, portal: actualPortal }
+    } catch (error) {
+      const portals = portal === 'all' ? ['internal', 'customer'] : [portal]
+      portals.forEach(item => clearPortalSession(item))
+      if (portal === 'all') localStorage.removeItem('freshToken')
+
+      const message = error.response && error.response.data && error.response.data.message
+        ? error.response.data.message
+        : error.message
+
+      return { success: false, message }
+    }
+  },
   async logout(portal = 'internal') {
 
     if (useFirebaseAuth) {
@@ -172,7 +261,7 @@ export default {
     return authClient.post("/logout");
   },
   async forgotPassword(payload) {
-    return axios.post('/auth/reset-password', {
+    return axios.post('/auth/forgot-password', {
       email: payload.email,
     })
   },

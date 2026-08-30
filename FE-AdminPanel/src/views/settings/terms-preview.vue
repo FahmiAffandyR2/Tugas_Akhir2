@@ -1,6 +1,11 @@
 <template>
-  <div class="px-6 py-4"
-  v-html="terms"></div>
+  <div class="px-6 py-4">
+    <vue-element-loading :active="isLoading" />
+    <v-alert v-if="error" type="error" text>
+      {{ error }}
+    </v-alert>
+    <div v-else v-html="terms"></div>
+  </div>
 </template>
 
 <script>
@@ -15,6 +20,7 @@ export default {
     return {
       isLoading: false,
       terms: null,
+      error: null,
     };
   },
   mounted() {
@@ -23,19 +29,22 @@ export default {
   methods: {
     getTerms() {
       this.isLoading = true;
+      this.error = null;
       axios
         .get("/docs/terms")
         .then((response) => {
-          this.isLoading = false;
           this.terms = response.data.terms;
         })
         .catch((error) => {
-          this.isLoading = false;
+          this.error = "Syarat dan ketentuan belum dapat dimuat. Silakan coba kembali.";
           this.$notify({
             title: "Error",
-            text: "Error while retrieving terms and conditions",
+            text: this.error,
             type: "error",
           });
+        })
+        .then(() => {
+          this.isLoading = false;
         });
     },
   },

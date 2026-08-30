@@ -16,7 +16,11 @@ export const getError = (error) => {
     console.error(error.response.headers);
   }
   if (error.response.data && error.response.data.errors) {
-    return error.response.data.errors;
+    return Object.values(error.response.data.errors).reduce((messages, item) => messages.concat(item), []).join(' ');
+  }
+
+  if (error.response.data && error.response.data.message) {
+    return error.response.data.message;
   }
 
   return errorMessage;
@@ -25,6 +29,7 @@ export const getError = (error) => {
 export const adminProfileStore = reactive({
   name: '',
   avatar: '',
+  customerLocationsCount: 0,
 })
 
 export const activationStore = reactive({

@@ -32,6 +32,12 @@ class Kernel extends ConsoleKernel
             $this->deleteAccounts();
             $this->publishTrips();
         })->everyMinute();
+
+        // Cek status GPS setiap 30 detik
+        $schedule->command('gps:check-status')->everyThirtySeconds();
+
+        // Auto-reject charter bookings dengan deadline pembayaran habis
+        $schedule->command('charter:expire-payments')->everyMinute();
     }
 
     /**

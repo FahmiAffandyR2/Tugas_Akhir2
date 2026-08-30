@@ -37,12 +37,9 @@
     <h1>EZ-Bus - API</h1>
     <p>To use the admin panel of EZ-Bus, use:
       <?php
-      //get the base address without last /
-      $base_url = rtrim($_SERVER['SERVER_NAME'], '/');
-      //get https or http
-      $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off' ? 'https' : 'http';
+      $base_url = rtrim(request()->getSchemeAndHttpHost(), '/');
 
-      echo "<a href='$protocol://$base_url'>$protocol://$base_url</a>";
+      echo "<a href='$base_url'>$base_url</a>";
 
       ?>
     </p>

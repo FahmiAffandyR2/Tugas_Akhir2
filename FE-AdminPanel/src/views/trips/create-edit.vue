@@ -45,7 +45,6 @@
             @finish="finish" 
             @back="back" 
             :trip="trip" 
-            :api-key="apiKey"
             :timestep="timestep"></step-2>
           </v-stepper-content>
         </v-stepper>
@@ -59,7 +58,6 @@ import VueElementLoading from "vue-element-loading";
 import step1 from "./steps/step1.vue";
 import step2 from "./steps/step2.vue";
 import step3 from "./steps/step3.vue";
-import {Keys} from '/src/config.js'
 
 export default {
   components: {
@@ -67,12 +65,10 @@ export default {
     step2,
     step3,
     VueElementLoading,
-    Keys
   },
 
   data() {
     return {
-      apiKey: Keys.GOOGLE_MAPS_API_KEY,
       step: 1,
       timestep: 5,
       step_valid: [true, true, true],

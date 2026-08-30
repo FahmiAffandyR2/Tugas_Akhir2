@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Validator;
 class SettingController extends Controller
 {
     private $settingRepository;
+    private const DEFAULT_TERMS = '<h1>Syarat dan Ketentuan</h1><p>Konten syarat dan ketentuan belum tersedia. Silakan hubungi admin untuk informasi lebih lanjut.</p>';
+    private const DEFAULT_PRIVACY = '<h1>Kebijakan Privasi</h1><p>Konten kebijakan privasi belum tersedia. Silakan hubungi admin untuk informasi lebih lanjut.</p>';
 
     public function __construct(
         SettingRepositoryInterface $settingRepository)
@@ -61,14 +63,14 @@ class SettingController extends Controller
 
     public function getPrivacyPolicy(Request $request)
     {
-        $privacy = file_get_contents(public_path('privacy_local.html'));
+        $privacy = $this->readPublicHtml('privacy_local.html', self::DEFAULT_PRIVACY);
 
         return response()->json(['privacy' => $privacy]);
     }
 
     public function getPrivacy(Request $request)
     {
-        $privacy = file_get_contents(public_path('privacy.html'));
+        $privacy = $this->readPublicHtml('privacy.html', self::DEFAULT_PRIVACY);
 
         return response()->json(['privacy' => $privacy]);
     }
@@ -122,8 +124,21 @@ class SettingController extends Controller
     public function getTerms(Request $request)
     {
         //get terms
-        $terms = file_get_contents(public_path('terms_local.html'));
+        $terms = $this->readPublicHtml('terms_local.html', self::DEFAULT_TERMS);
 
         return response()->json(['terms' => $terms]);
+    }
+
+    private function readPublicHtml(string $filename, string $fallback): string
+    {
+        $path = public_path($filename);
+
+        if (!file_exists($path) || !is_readable($path)) {
+            Log::warning('Public document file is not readable.', ['path' => $path]);
+            return $fallback;
+        }
+
+        $contents = file_get_contents($path);
+        return $contents === false ? $fallback : $contents;
     }
 }

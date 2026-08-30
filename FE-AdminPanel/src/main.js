@@ -17,7 +17,6 @@ import Notifications from "vue-notification";
 import VueSweetalert2 from "vue-sweetalert2";
 import VueProgressBar from "vue-progressbar";
 import browserDetect from "vue-browser-detect-plugin";
-import * as VueGoogleMaps from "vue2-google-maps";
 
 import "sweetalert2/dist/sweetalert2.min.css";
 
@@ -25,7 +24,6 @@ Vue.use(Notifications);
 Vue.use(VueSweetalert2);
 Vue.use(require("vue-moment"));
 Vue.use(browserDetect);
-Vue.use(VueGoogleMaps);
 
 const progressBarOptions = {
   color: "#9155fd",

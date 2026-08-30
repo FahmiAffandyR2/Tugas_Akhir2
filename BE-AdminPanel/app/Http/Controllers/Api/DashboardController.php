@@ -15,6 +15,7 @@ use App\Repository\UserRefundRepositoryInterface;
 use App\Repository\PlannedTripRepositoryInterface;
 use Illuminate\Support\Facades\Log;
 use App\Models\CharterRevenueTransaction;
+use App\Models\Complaint;
 
 class DashboardController extends Controller
 {
@@ -104,6 +105,7 @@ class DashboardController extends Controller
         $routeCount = $this->routeRepository->all()->count();
         $stopCount = $this->stopRepository->all()->count();
         $tripCount = $this->tripRepository->all()->count();
+        $totalComplaints = Complaint::count();
 
 
         //get the current currency
@@ -235,6 +237,7 @@ class DashboardController extends Controller
             'totalRoutes' => $this->thousandsFormat($routeCount),
             'totalStops' => $this->thousandsFormat($stopCount),
             'totalTrips' => $this->thousandsFormat($tripCount),
+            'totalComplaints' => $this->thousandsFormat($totalComplaints),
             'bestTrips' => $bestSalesTrips,
             'plannedTrips' => $plannedTripsAll,
         ];

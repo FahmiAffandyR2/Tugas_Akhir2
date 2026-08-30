@@ -36,4 +36,10 @@ return [
         'ca_bundle' => env('GOOGLE_MAPS_CA_BUNDLE', 'C:\\xampp\\apache\\bin\\curl-ca-bundle.crt'),
     ],
 
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect_uri' => env('GOOGLE_REDIRECT_URI', 'http://localhost:8080/auth/google/callback'),
+    ],
+
 ];

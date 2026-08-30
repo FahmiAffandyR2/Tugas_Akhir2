@@ -99,8 +99,10 @@ class TripController extends Controller
 
     public function index()
     {
+        $completedStatusId = $this->completedTripStatusId();
         $activeTrips = $this->tripRepository->allWhere(['*'], ['route', 'driver'], [['status_id', '=', 1]]);
         $trashedTrips = $this->tripRepository->allWhere(['*'], ['route', 'driver'], [['status_id', '=', 3]]);
+        $completedTrips = $this->tripRepository->allWhere(['*'], ['route', 'driver'], [['status_id', '=', $completedStatusId]]);
         $suspensions = $this->suspendedTripRepository->allWhere(['*'], ['trip', 'trip.route']);
 
         foreach ($activeTrips as $activeTrip) {
@@ -175,10 +177,26 @@ class TripController extends Controller
             [
                 'activeTrips' => $activeTrips,
                 'suspendedTrips' => $suspensions,
-                'trashedTrips' => $trashedTrips
+                'trashedTrips' => $trashedTrips,
+                'completedTrips' => $completedTrips
             ],
             200
         );
+    }
+
+    private function completedTripStatusId()
+    {
+        $status = DB::table('statuses')->where('name', 'completed')->first();
+
+        if ($status) {
+            return $status->id;
+        }
+
+        return DB::table('statuses')->insertGetId([
+            'name' => 'completed',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     public function getTrip($trip_id)
@@ -197,7 +215,7 @@ class TripController extends Controller
     private function getAllPlannedTrips($mode)
     {
         //get all planned trips
-        $plannedTrips = $this->plannedTripRepository->allWhere(['*'], ['trip', 'trip.route', 'driver', 'bus', 'reservations', 'charterBooking.customer']);
+        $plannedTrips = $this->plannedTripRepository->allWhere(['*'], ['trip', 'trip.route', 'driver', 'bus', 'reservations', 'charterBooking.customer', 'plannedTripDetail']);
 
         $upcomingTrips = [];
         $runningTrips = [];
@@ -284,10 +302,12 @@ class TripController extends Controller
     //getOnRouteTrips
     public function getOnRouteTrips(Request $request)
     {
-        $runningTrips = [];
-
-        //get running trips only
-        $runningTrips = $this->getAllPlannedTrips('running');
+        // Optimized query: only load running trips with minimal eager loads
+        $runningTrips = \App\Models\PlannedTrip::whereNotNull('started_at')
+            ->whereNull('ended_at')
+            ->with(['trip:id,route_id,first_stop_time,last_stop_time', 'trip.route:id,name', 'driver:id,name', 'bus:id,license,fleet_number'])
+            ->orderBy('planned_date', 'desc')
+            ->get();
 
         return response()->json(['running' => $runningTrips], 200);
     }
@@ -449,6 +469,21 @@ class TripController extends Controller
         $trip->status_id = $trip->status_id != 1 ? 1 : 3;
         //$trip->suspend_date = $trip->status_id == 1 ? null : date('Y-m-d');
         $this->tripRepository->update($trip_id, $trip->toArray());
+        return response()->json(['success' => ['trip updated successfully']]);
+    }
+
+    public function completeRestore(Request $request)
+    {
+        $this->validate($request, [
+            'trip_id' => 'required|integer',
+        ], [], []);
+
+        $trip_id = $request->trip_id;
+        $trip = $this->tripRepository->findById($trip_id);
+        $completedStatusId = $this->completedTripStatusId();
+        $trip->status_id = $trip->status_id == $completedStatusId ? 1 : $completedStatusId;
+        $this->tripRepository->update($trip_id, $trip->toArray());
+
         return response()->json(['success' => ['trip updated successfully']]);
     }
 
@@ -1184,6 +1219,8 @@ class TripController extends Controller
                 "end_stop_id" => $trip_search_result->end_stop_id,
                 "end_point_lat" => $trip_search_result->end_point_lat,
                 "end_point_lng" => $trip_search_result->end_point_lng,
+                "pickup_lat" => $request->pickup_lat,
+                "pickup_lng" => $request->pickup_lng,
                 "start_address" => $trip_search_result->start_address,
                 "destination_address" => $trip_search_result->destination_address,
                 "planned_start_time" => $trip_search_result->planned_start_time,
@@ -1277,6 +1314,10 @@ class TripController extends Controller
                     return response()->json(['message' => 'Trip has already been started or completed.'], 422);
                 }
                 $planned_trip->started_at = $eventTime;
+                // Set bus status to on_trip when trip starts
+                if ($planned_trip->bus_id) {
+                    \App\Models\Bus::where('id', $planned_trip->bus_id)->update(['status' => 'on_trip']);
+                }
             } else {
                 if (!$planned_trip->started_at || $planned_trip->ended_at) {
                     DB::rollback();
@@ -1287,7 +1328,21 @@ class TripController extends Controller
             $planned_trip->save();
             if ($mode == 0) {
                 $charterBooking = \App\Models\CharterBooking::where('operational_planned_trip_id', $planned_trip->id)->first();
-                if ($charterBooking) $charterBooking->update(['status' => 'completed']);
+                if ($charterBooking) {
+                    $charterBooking->update(['status' => 'completed']);
+                    // Reset bus status to available
+                    $busIds = [];
+                    if ($charterBooking->bus_id) $busIds[] = $charterBooking->bus_id;
+                    $assignmentBusIds = $charterBooking->assignments->pluck('bus_id')->toArray();
+                    $busIds = array_unique(array_merge($busIds, $assignmentBusIds));
+                    if (!empty($busIds)) {
+                        \App\Models\Bus::whereIn('id', $busIds)->update(['status' => 'available']);
+                    }
+                }
+                // Also reset bus status for regular trips (non-charter)
+                if ($planned_trip->bus_id) {
+                    \App\Models\Bus::where('id', $planned_trip->bus_id)->update(['status' => 'available']);
+                }
             }
             if ($mode == 1)
             {
@@ -1377,6 +1432,25 @@ class TripController extends Controller
 
             $planned_trip->save();
             $locationSaved = true;
+
+            // Simpan ke gps_tracking_logs untuk riwayat
+            try {
+                \App\Models\GpsTrackingLog::create([
+                    'driver_id' => $user_id,
+                    'bus_id' => $planned_trip->bus_id,
+                    'planned_trip_id' => $planned_trip->id,
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'speed' => $speed,
+                    'accuracy' => $request->accuracy ?? null,
+                    'recorded_at' => now(),
+                ]);
+            } catch (\Throwable $logError) {
+                Log::warning('GPS position saved but GPS log creation failed.', [
+                    'planned_trip_id' => $planned_trip->id,
+                    'error' => $logError->getMessage(),
+                ]);
+            }
 
             $pos = array(
                 'speed' => $speed,

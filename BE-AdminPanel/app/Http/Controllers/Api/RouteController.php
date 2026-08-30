@@ -39,8 +39,32 @@ class RouteController extends Controller
 
     public function index()
     {
-        //get all routes
         return response()->json($this->routeRepository->allWithCount(['*'], ['stops']), 200);
+    }
+
+    public function getRoutesByStatus()
+    {
+        $routes = \App\Models\Route::withCount('plannedTrips')
+            ->withCount(['plannedTrips as active_trips_count' => function ($q) {
+                $q->whereNull('ended_at');
+            }])
+            ->withCount(['plannedTrips as completed_trips_count' => function ($q) {
+                $q->whereNotNull('ended_at');
+            }])
+            ->get();
+
+        $berjalan = $routes->filter(function ($route) {
+            return $route->active_trips_count > 0 || $route->planned_trips_count === 0;
+        })->values();
+
+        $selesai = $routes->filter(function ($route) {
+            return $route->planned_trips_count > 0 && $route->active_trips_count === 0;
+        })->values();
+
+        return response()->json([
+            'berjalan' => $berjalan,
+            'selesai' => $selesai,
+        ]);
     }
 
 

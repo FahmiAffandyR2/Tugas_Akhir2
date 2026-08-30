@@ -98,6 +98,7 @@ Route::group(['prefix' => 'routes'], function () {
   Route::post('/create-edit', [Api\RouteController::class, 'createEdit'])->middleware(['auth:sanctum', 'admin']);
   Route::delete('/{route}', [Api\RouteController::class, 'destroy'])->middleware(['auth:sanctum', 'admin']);
   Route::get('/all', [Api\RouteController::class, 'index'])->middleware(['auth:sanctum']);
+  Route::get('/by-status', [Api\RouteController::class, 'getRoutesByStatus'])->middleware(['auth:sanctum', 'admin']);
   Route::get('/{id}', [Api\RouteController::class, 'getRoute']);
 });
 
@@ -106,12 +107,14 @@ Route::group(['prefix' => 'stops'], function () {
   Route::delete('/{stop}', [Api\StopController::class, 'destroy'])->middleware(['auth:sanctum', 'admin']);
   Route::get('/all', [Api\StopController::class, 'index'])->middleware(['auth:sanctum']);
   Route::get('/{id}', [Api\StopController::class, 'getStop']);
+  Route::get('/{id}/nearby-depots', [Api\StopController::class, 'nearbyDepots'])->middleware(['auth:sanctum', 'admin']);
 });
 
 
 Route::group(['prefix' => 'trips'], function () {
   Route::post('/create-edit', [Api\TripController::class, 'createEdit'])->middleware(['auth:sanctum', 'admin']);
   Route::post('/trash-restore', [Api\TripController::class, 'trashRestore'])->middleware(['auth:sanctum', 'admin']);
+  Route::post('/complete-restore', [Api\TripController::class, 'completeRestore'])->middleware(['auth:sanctum', 'admin']);
   Route::post('/suspend', [Api\TripController::class, 'suspend'])->middleware(['auth:sanctum', 'admin']);
   Route::delete('/remove-suspension/{suspension_id}', [Api\TripController::class, 'removeSuspension'])->middleware(['auth:sanctum', 'admin']);
   //assign driver to trip
@@ -230,6 +233,7 @@ Route::group(['prefix' => 'buses'], function() {
   Route::post('/unassign-driver', [Api\BusController::class, 'unassignDriver'])->middleware(['auth:sanctum', 'admin']);
   Route::delete('/{bus}', [Api\BusController::class, 'destroy'])->middleware(['auth:sanctum', 'admin']);
   Route::post('/assign-driver', [Api\BusController::class, 'assignDriver'])->middleware(['auth:sanctum', 'admin']);
+  Route::get('/types', [Api\BusController::class, 'busTypes'])->middleware(['auth:sanctum', 'admin']);
   Route::get('/all', [Api\BusController::class, 'index']);
   //Route::get('/{id}', [Api\BusController::class, 'getBus']);
   Route::get('/available-drivers', [Api\BusController::class, 'getAvailableDrivers']);
@@ -237,6 +241,7 @@ Route::group(['prefix' => 'buses'], function() {
 
 Route::group(['prefix' => 'fleet-depots', 'middleware' => ['auth:sanctum', 'admin']], function() {
   Route::get('/', [Api\FleetDepotController::class, 'index']);
+  Route::get('/{fleetDepot}', [Api\FleetDepotController::class, 'show']);
   Route::post('/', [Api\FleetDepotController::class, 'store']);
   Route::put('/{fleetDepot}', [Api\FleetDepotController::class, 'update']);
   Route::delete('/{fleetDepot}', [Api\FleetDepotController::class, 'destroy']);
@@ -245,7 +250,9 @@ Route::group(['prefix' => 'fleet-depots', 'middleware' => ['auth:sanctum', 'admi
 Route::group(['prefix' => 'auth'], function () {
   Route::post('/login', [Api\AuthController::class, 'login']);
   Route::post('/loginViaToken', [Api\AuthController::class, 'loginViaToken']);
+  Route::post('/google-login', [Api\AuthController::class, 'googleLogin']);
   //reset password
+  Route::post('/forgot-password', [Api\AuthController::class, 'resetPassword']);
   Route::post('/reset-password', [Api\AuthController::class, 'resetPassword']);
   Route::post('/createCustomer', [Api\AuthController::class, 'createCustomer']);
   Route::post('/createDriver', [Api\AuthController::class, 'createDriver']);
@@ -258,21 +265,108 @@ Route::group(['prefix' => 'auth'], function () {
 
 Route::group(['prefix' => 'charter-bookings', 'middleware' => ['auth:sanctum']], function () {
   Route::get('/mine', [Api\CharterBookingController::class, 'customerIndex'])->middleware('customer');
+  Route::get('/options', [Api\CharterBookingController::class, 'options'])->middleware('customer');
   Route::post('/', [Api\CharterBookingController::class, 'store'])->middleware('customer');
   Route::post('/{charterBooking}/payment', [Api\CharterBookingController::class, 'submitPayment'])->middleware('customer');
   Route::get('/{charterBooking}/invoice', [Api\CharterBookingController::class, 'invoice']);
   Route::post('/{charterBooking}/cancel-rejected-payment', [Api\CharterBookingController::class, 'cancelRejectedPayment'])->middleware('customer');
+  Route::post('/{charterBooking}/cancel', [Api\CharterBookingController::class, 'customerCancel'])->middleware('customer');
   Route::get('/admin', [Api\CharterBookingController::class, 'adminIndex'])->middleware('admin');
   Route::get('/admin-assignment-options', [Api\CharterBookingController::class, 'assignmentOptions'])->middleware('admin');
   Route::put('/admin/{charterBooking}', [Api\CharterBookingController::class, 'adminUpdate'])->middleware('admin');
   Route::post('/admin/{charterBooking}/payment-review', [Api\CharterBookingController::class, 'reviewPayment'])->middleware('admin');
+  Route::post('/admin/{charterBooking}/cancel', [Api\CharterBookingController::class, 'adminCancel'])->middleware('admin');
   Route::get('/admin/{charterBooking}/payment-proof', [Api\CharterBookingController::class, 'paymentProof'])->middleware('admin');
+});
+
+Route::group(['prefix' => 'customer/tracking', 'middleware' => ['auth:sanctum', 'customer']], function () {
+  Route::get('/active', [Api\CustomerTrackingController::class, 'getActiveBookings']);
+  Route::get('/{bookingId}', [Api\CustomerTrackingController::class, 'getTracking']);
 });
 
 
 Route::group(['prefix' => 'activation'], function () {
   Route::get('/get-activation-code', [Api\ActivationController::class, 'load'])->middleware(['auth:sanctum', 'admin']);
   Route::post('/activate', [Api\ActivationController::class, 'activate'])->middleware(['auth:sanctum', 'admin']);
+});
+
+// GPS Tracking Routes
+Route::group(['prefix' => 'tracking-logs', 'middleware' => ['auth:sanctum']], function () {
+  Route::get('/', [Api\TrackingController::class, 'getTrackingLogs'])->middleware('admin');
+  Route::get('/playback', [Api\TrackingController::class, 'getTrackingLogsForPlayback'])->middleware('admin');
+  Route::get('/export', [Api\TrackingController::class, 'exportTrackingLogs'])->middleware('admin');
+});
+
+Route::group(['prefix' => 'gps-alerts', 'middleware' => ['auth:sanctum']], function () {
+  Route::get('/', [Api\TrackingController::class, 'getGpsAlerts'])->middleware('admin');
+  Route::get('/log', [Api\TrackingController::class, 'getGpsAlertsLog'])->middleware('admin');
+  Route::post('/{id}/dismiss', [Api\TrackingController::class, 'dismissAlert'])->middleware('admin');
+});
+
+Route::group(['prefix' => 'tracking', 'middleware' => ['auth:sanctum']], function () {
+  Route::get('/routes/{id}/path', [Api\TrackingController::class, 'getRoutePath'])->middleware('admin');
+  Route::get('/drivers/active', [Api\TrackingController::class, 'getActiveDrivers'])->middleware('admin');
+  Route::get('/drivers/{id}/trips', [Api\TrackingController::class, 'getDriverTrips'])->middleware('admin');
+});
+
+// Reports
+Route::group(['prefix' => 'reports', 'middleware' => ['auth:sanctum', 'admin']], function () {
+  Route::get('/drivers', [Api\ReportController::class, 'driverAnalytics']);
+  Route::get('/drivers/export', [Api\ReportController::class, 'exportDriverAnalytics']);
+  Route::get('/financial', [Api\FinancialReportController::class, 'index']);
+  Route::get('/financial/bookings', [Api\FinancialReportController::class, 'bookings']);
+});
+
+// Customer Locations
+Route::group(['prefix' => 'customer-locations', 'middleware' => ['auth:sanctum', 'admin']], function () {
+  Route::get('/', [Api\CustomerLocationController::class, 'index']);
+  Route::get('/count', [Api\CustomerLocationController::class, 'count']);
+  Route::get('/nearby-depots', [Api\CustomerLocationController::class, 'nearbyDepots']);
+});
+
+// Customer Tourist Stops
+Route::group(['prefix' => 'customer-tourist', 'middleware' => ['auth:sanctum']], function () {
+  Route::get('/stops', [Api\CustomerTouristController::class, 'touristStops']);
+  Route::get('/stops/{stopId}', [Api\CustomerTouristController::class, 'touristStopDetail']);
+  Route::get('/depots/{depotId}/routes', [Api\CustomerTouristController::class, 'depotAvailableRoutes']);
+});
+
+// GPS Tracking
+Route::group(['prefix' => 'gps'], function () {
+  Route::post('/device', [Api\GpsTrackingController::class, 'deviceIngest']);
+  Route::post('/phone', [Api\GpsTrackingController::class, 'phoneUpdate'])->middleware(['auth:sanctum', 'driver']);
+});
+
+Route::group(['prefix' => 'admin/tracking', 'middleware' => ['auth:sanctum', 'admin']], function () {
+  Route::get('/vehicles', [Api\GpsTrackingController::class, 'getVehicles']);
+  Route::get('/history/{busId}', [Api\GpsTrackingController::class, 'getHistory']);
+});
+
+Route::group(['prefix' => 'audit-logs', 'middleware' => ['auth:sanctum', 'admin']], function () {
+  Route::get('/', [Api\AuditLogController::class, 'index']);
+  Route::get('/entities', [Api\AuditLogController::class, 'entities']);
+});
+
+Route::group(['prefix' => 'notification-templates', 'middleware' => ['auth:sanctum', 'admin']], function () {
+  Route::get('/', [Api\NotificationTemplateController::class, 'index']);
+  Route::post('/', [Api\NotificationTemplateController::class, 'store']);
+  Route::put('/{notificationTemplate}', [Api\NotificationTemplateController::class, 'update']);
+  Route::delete('/{notificationTemplate}', [Api\NotificationTemplateController::class, 'destroy']);
+  Route::post('/{notificationTemplate}/preview', [Api\NotificationTemplateController::class, 'preview']);
+});
+
+Route::group(['prefix' => 'notifications', 'middleware' => ['auth:sanctum', 'admin']], function () {
+  Route::get('/', [Api\NotificationController::class, 'history']);
+  Route::post('/send', [Api\NotificationController::class, 'send']);
+  Route::get('/recipients', [Api\NotificationController::class, 'recipients']);
+});
+
+Route::group(['prefix' => 'driver-shifts', 'middleware' => ['auth:sanctum', 'admin']], function () {
+  Route::get('/', [Api\DriverShiftController::class, 'index']);
+  Route::post('/', [Api\DriverShiftController::class, 'store']);
+  Route::put('/{driverShift}', [Api\DriverShiftController::class, 'update']);
+  Route::delete('/{driverShift}', [Api\DriverShiftController::class, 'destroy']);
+  Route::get('/drivers', [Api\DriverShiftController::class, 'drivers']);
 });
 
 //Todo: the following routes should be removed. Please update the frontend to use the new routes

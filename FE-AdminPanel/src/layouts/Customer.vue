@@ -50,8 +50,10 @@ export default {
     customerName: 'Customer',
     menus: [
       { title: 'Beranda', mobileTitle: 'Beranda', icon: 'mdi-view-dashboard-outline', to: '/customer/beranda' },
+      { title: 'Tempat Wisata', mobileTitle: 'Wisata', icon: 'mdi-palm-tree', to: '/customer/wisata' },
       { title: 'Pesan Bus', mobileTitle: 'Pesan', icon: 'mdi-bus-marker', to: '/customer/pesan' },
       { title: 'Pemesanan Saya', mobileTitle: 'Pesanan', icon: 'mdi-clipboard-text-clock-outline', to: '/customer/pemesanan' },
+      { title: 'Live Tracking', mobileTitle: 'Tracking', icon: 'mdi-map-marker-radius', to: '/customer/perjalanan' },
       { title: 'Profil Saya', mobileTitle: 'Profil', icon: 'mdi-account-outline', to: '/customer/profil' },
     ],
   }),

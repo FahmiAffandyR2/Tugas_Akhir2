@@ -1,6 +1,10 @@
 <template>
   <div>
     <v-alert v-if="gpsMessage" :type="gpsMessage.type" dismissible>{{ gpsMessage.text }}</v-alert>
+    <v-alert v-if="queueCount > 0" type="warning" dense class="mb-3">
+      <v-icon small class="mr-1">mdi-cloud-upload-outline</v-icon>
+      {{ queueCount }} lokasi GPS menunggu pengiriman saat online kembali.
+    </v-alert>
     <div class="page-heading d-flex align-center mb-6">
       <div><h1 class="text-h5 font-weight-bold mb-1">{{ pageTitle }}</h1><p class="grey--text mb-0">{{ pageSubtitle }}</p></div>
       <v-spacer/><v-chip color="primary" outlined><v-icon left small>mdi-bus-clock</v-icon>{{ filteredTrips.length }} perjalanan</v-chip>
@@ -18,9 +22,14 @@
         <div class="navigation-header pa-4 pa-md-5 d-flex flex-wrap align-center">
           <div><div class="caption text-uppercase font-weight-bold primary--text mb-1">Navigasi perjalanan</div><h2 class="text-h6 font-weight-bold mb-0">{{ activeTrip.route ? activeTrip.route.name : 'Rute perjalanan' }}</h2></div>
           <v-spacer />
-          <div class="navigation-metrics d-flex mt-3 mt-sm-0">
-            <div class="metric px-4"><div class="caption grey--text">Jarak tersisa</div><strong>{{ remainingDistanceLabel }}</strong></div>
-            <div class="metric px-4"><div class="caption grey--text">Estimasi tiba</div><strong>{{ etaLabel }}</strong></div>
+          <div class="d-flex align-center mt-3 mt-sm-0">
+            <v-chip small :color="gpsStatusColor" dark class="mr-2">
+              <v-icon left small>{{ gpsStatusIcon }}</v-icon>{{ gpsStatusLabel }}
+            </v-chip>
+            <div class="navigation-metrics d-flex">
+              <div class="metric px-4"><div class="caption grey--text">Jarak tersisa</div><strong>{{ remainingDistanceLabel }}</strong></div>
+              <div class="metric px-4"><div class="caption grey--text">Estimasi tiba</div><strong>{{ etaLabel }}</strong></div>
+            </div>
           </div>
         </div>
         <v-row no-gutters>
@@ -66,9 +75,25 @@
 
 <script>
 import LeafletMapLoader from '@/components/LeafletMapLoader.vue'
+import GpsTrackingService from '@/services/GpsTrackingService'
+
 export default {
   components: { LeafletMapLoader },
-  data: () => ({ trips: [], loading: false, actionId: null, watchId: null, activeTripId: null, lastSentAt: 0, gpsMessage: null, currentPosition: null, driverToNextStopRoutePath: [], routeRequestTimeout: null, routeRequestId: 0, lastRouteRequestKey: null }),
+  data: () => ({
+    trips: [],
+    loading: false,
+    actionId: null,
+    currentPosition: null,
+    gpsMessage: null,
+    gpsServiceStatus: 'stopped',
+    queueCount: 0,
+    driverToNextStopRoutePath: [],
+    routeRequestTimeout: null,
+    routeRequestId: 0,
+    lastRouteRequestKey: null,
+    removePositionListener: null,
+    removeStatusListener: null,
+  }),
   computed: {
     filter() { return this.$route.meta.tripFilter },
     filteredTrips() { return this.trips.filter(t => this.filter === 'active' ? this.isActive(t) : this.filter === 'history' ? !!t.ended_at : this.isScheduled(t)) },
@@ -168,9 +193,21 @@ export default {
     },
     remainingDistanceLabel() { const distance=this.remainingDistanceKm;return distance===null?'Menunggu GPS':distance<1?`${Math.round(distance*1000)} m`:`${distance.toFixed(1)} km` },
     etaLabel() { const distance=this.remainingDistanceKm;if(distance===null)return '-';const minutes=Math.max(1,Math.round(distance/40*60));if(minutes<60)return `± ${minutes} menit`;return `± ${Math.floor(minutes/60)} jam ${minutes%60} mnt` },
+    gpsStatusColor() {
+      const colors = { tracking: 'success', sent: 'success', queued: 'warning', background: 'orange', offline: 'grey', error: 'error', stopped: 'grey', online: 'success' }
+      return colors[this.gpsServiceStatus] || 'grey'
+    },
+    gpsStatusIcon() {
+      const icons = { tracking: 'mdi-crosshairs-gps', sent: 'mdi-check-circle', queued: 'mdi-cloud-upload', background: 'mdi-sleep', offline: 'mdi-wifi-off', error: 'mdi-alert-circle', stopped: 'mdi-stop-circle', online: 'mdi-wifi' }
+      return icons[this.gpsServiceStatus] || 'mdi-help-circle'
+    },
+    gpsStatusLabel() {
+      const labels = { tracking: 'GPS aktif', sent: 'Terkirim', queued: 'Menunggu', background: 'Background', offline: 'Offline', error: 'Error GPS', stopped: 'Berhenti', online: 'Online' }
+      return labels[this.gpsServiceStatus] || 'Unknown'
+    },
   },
   watch: {
-    '$route.meta.tripFilter'() { this.resumeTracking() },
+    '$route.meta.tripFilter'() { this.loadTrips() },
     currentPosition: {
       deep: true,
       handler() { this.scheduleDriverRoute() },
@@ -180,14 +217,61 @@ export default {
       handler() { this.scheduleDriverRoute() },
     },
   },
+  created() {
+    this.removePositionListener = GpsTrackingService.onPosition((pos) => {
+      this.currentPosition = { lat: pos.lat, lng: pos.lng }
+    })
+    this.removeStatusListener = GpsTrackingService.onStatus((status, message) => {
+      this.gpsServiceStatus = status
+      if (status === 'error') {
+        this.gpsMessage = { type: 'error', text: message }
+      } else if (status === 'queued') {
+        this.gpsMessage = { type: 'warning', text: message }
+      } else if (status === 'sent') {
+        this.gpsMessage = { type: 'success', text: 'Lokasi GPS berhasil dikirim ke Super Admin.' }
+      }
+      this._refreshQueueCount()
+    })
+  },
   mounted() { this.loadTrips() },
-  beforeDestroy() { this.stopTracking(); if (this.routeRequestTimeout) clearTimeout(this.routeRequestTimeout) },
+  beforeDestroy() {
+    if (this.removePositionListener) this.removePositionListener()
+    if (this.removeStatusListener) this.removeStatusListener()
+    if (this.routeRequestTimeout) clearTimeout(this.routeRequestTimeout)
+  },
   methods: {
     async loadTrips() {
       this.loading = true
-      try { const r = await axios.get('/drivers/get-driver-trips'); this.trips = r.data.trips || []; this.resumeTracking() }
+      try {
+        const r = await axios.get('/drivers/get-driver-trips')
+        this.trips = r.data.trips || []
+        this._syncTracking()
+        this._refreshQueueCount()
+      }
       catch (e) { this.notifyError(e, 'Jadwal tidak dapat dimuat.') }
       finally { this.loading = false }
+    },
+    _syncTracking() {
+      const active = this.activeTrip
+      if (active) {
+        const lat = Number(active.last_position_lat)
+        const lng = Number(active.last_position_lng)
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          this.currentPosition = { lat, lng }
+        }
+        if (!GpsTrackingService.isTracking || GpsTrackingService.tripId !== active.id) {
+          GpsTrackingService.start(active.id)
+        }
+      } else {
+        if (GpsTrackingService.isTracking) {
+          GpsTrackingService.stop()
+        }
+        this.currentPosition = null
+        this.driverToNextStopRoutePath = []
+      }
+    },
+    async _refreshQueueCount() {
+      this.queueCount = await GpsTrackingService.getQueueCount()
     },
     isScheduled(t) { return !t.started_at && !t.ended_at },
     isActive(t) { return !!t.started_at && !t.ended_at },
@@ -195,47 +279,32 @@ export default {
     busName(t) { return t.bus ? (t.bus.license || t.bus.name || `Bus #${t.bus.id}`) : 'Bus belum ditentukan' },
     formatDate(value) { return value ? new Intl.DateTimeFormat('id-ID', { dateStyle: 'full' }).format(new Date(value + 'T00:00:00')) : '-' },
     async startTrip(trip) {
-      if (!navigator.geolocation) return this.setGpsError('Perangkat ini tidak mendukung GPS.')
+      if (!navigator.geolocation) {
+        this.gpsMessage = { type: 'error', text: 'Perangkat ini tidak mendukung GPS.' }
+        return
+      }
       this.actionId = trip.id
-      navigator.geolocation.getCurrentPosition(async position => {
-        try {
-          await axios.post('/planned-trips/start-stop', { planned_trip_id: trip.id, mode: 1 })
-          trip.started_at = new Date().toISOString()
-          await this.sendPosition(trip.id, position)
-          this.startTracking(trip.id)
-          this.$router.push('/driver/perjalanan').catch(() => {})
-        } catch (e) { this.notifyError(e, 'Perjalanan gagal dimulai.') }
-        finally { this.actionId = null }
-      }, error => { this.actionId = null; this.setGpsError(this.geoError(error)) }, { enableHighAccuracy: true, timeout: 15000 })
+      try {
+        await axios.post('/planned-trips/start-stop', { planned_trip_id: trip.id, mode: 1 })
+        trip.started_at = new Date().toISOString()
+        GpsTrackingService.start(trip.id)
+        this.$router.push('/driver/perjalanan').catch(() => {})
+      } catch (e) { this.notifyError(e, 'Perjalanan gagal dimulai.') }
+      finally { this.actionId = null }
     },
     async completeTrip(trip) {
       const confirmation = await this.$swal.fire({ title: 'Selesaikan perjalanan?', text: 'Pengiriman lokasi GPS akan dihentikan.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, selesai', cancelButtonText: 'Batal' })
       if (!confirmation.isConfirmed) return
       this.actionId = trip.id
-      try { await axios.post('/planned-trips/start-stop', { planned_trip_id: trip.id, mode: 0 }); trip.ended_at = new Date().toISOString(); this.stopTracking(); this.$notify({ type: 'success', title: 'Berhasil', text: 'Perjalanan telah selesai.' }) }
+      try {
+        await axios.post('/planned-trips/start-stop', { planned_trip_id: trip.id, mode: 0 })
+        GpsTrackingService.stop()
+        this.$notify({ type: 'success', title: 'Berhasil', text: 'Perjalanan telah selesai.' })
+        await this.loadTrips()
+      }
       catch (e) { this.notifyError(e, 'Perjalanan gagal diselesaikan.') }
       finally { this.actionId = null }
     },
-    resumeTracking() { const active = this.trips.find(this.isActive); if (active) { const lat=Number(active.last_position_lat);const lng=Number(active.last_position_lng);if(Number.isFinite(lat)&&Number.isFinite(lng))this.currentPosition={lat,lng};this.startTracking(active.id);this.scheduleDriverRoute() } else { this.currentPosition=null;this.driverToNextStopRoutePath=[];this.stopTracking() } },
-    startTracking(id) {
-      if (this.watchId !== null && this.activeTripId === id) return
-      this.stopTracking(); this.activeTripId = id
-      if (!navigator.geolocation) return this.setGpsError('Perangkat ini tidak mendukung GPS.')
-      this.watchId = navigator.geolocation.watchPosition(p => this.sendPosition(id, p), e => this.setGpsError(this.geoError(e)), { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 })
-    },
-    stopTracking() { if (this.watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(this.watchId); this.watchId = null; this.activeTripId = null },
-    async sendPosition(id, position) {
-      this.currentPosition = { lat: position.coords.latitude, lng: position.coords.longitude }
-      if (Date.now() - this.lastSentAt < 10000) return
-      this.lastSentAt = Date.now()
-      try { await axios.post('/planned-trips/set-last-position', { planned_trip_id: id, lat: position.coords.latitude, lng: position.coords.longitude, speed: position.coords.speed || 0 }); this.gpsMessage = { type: 'success', text: 'Lokasi GPS berhasil dikirim ke Super Admin.' } }
-      catch (e) {
-        const message = e.response && e.response.data && e.response.data.message
-        this.gpsMessage = { type: 'warning', text: message || 'Lokasi belum berhasil dikirim. Sistem akan mencoba lagi.' }
-      }
-    },
-    geoError(e) { return e.code === 1 ? 'Izin lokasi ditolak. Aktifkan izin GPS untuk memulai perjalanan.' : 'Lokasi GPS tidak dapat diperoleh. Pastikan GPS aktif.' },
-    setGpsError(text) { this.gpsMessage = { type: 'error', text } },
     notifyError(e, fallback) { const text = e.response && e.response.data && e.response.data.message || fallback; this.$notify({ type: 'error', title: 'Gagal', text }) },
     scheduleDriverRoute() {
       if (this.routeRequestTimeout) clearTimeout(this.routeRequestTimeout)
@@ -265,10 +334,7 @@ export default {
           this.driverToNextStopRoutePath = backendPath
           return
         }
-      } catch (_) {
-        // Try the public OSM router from the browser when the backend route
-        // provider is unavailable in production.
-      }
+      } catch (_) {}
 
       try {
         const osrmPath = await this.loadOsrmRoutePath(originLat, originLng, destinationLat, destinationLng)
@@ -291,16 +357,8 @@ export default {
     },
     async loadOsrmRoutePath(originLat, originLng, destinationLat, destinationLng) {
       const coordinates = `${originLng},${originLat};${destinationLng},${destinationLat}`
-      const params = new URLSearchParams({
-        overview: 'full',
-        geometries: 'geojson',
-        steps: 'false',
-      })
-      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinates}?${params.toString()}`, {
-        method: 'GET',
-        mode: 'cors',
-      })
-
+      const params = new URLSearchParams({ overview: 'full', geometries: 'geojson', steps: 'false' })
+      const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${coordinates}?${params.toString()}`, { method: 'GET', mode: 'cors' })
       if (!response.ok) return []
       const data = await response.json()
       if (!data || data.code !== 'Ok') return []
@@ -311,10 +369,7 @@ export default {
       let min = Infinity
       path.forEach((point, index) => {
         const distance = this.distanceKm(point, target)
-        if (distance < min) {
-          min = distance
-          nearest = index
-        }
+        if (distance < min) { min = distance; nearest = index }
       })
       return nearest
     },

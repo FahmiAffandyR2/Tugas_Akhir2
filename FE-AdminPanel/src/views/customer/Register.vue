@@ -28,7 +28,14 @@
               <v-col cols="12" sm="6"><v-text-field v-model="form.password_confirmation" outlined label="Konfirmasi password" :type="showPassword?'text':'password'" prepend-inner-icon="mdi-lock-check-outline" :rules="confirmationRules" /></v-col>
             </v-row>
             <v-checkbox v-model="accepted" :rules="[v=>!!v||'Anda harus menyetujui ketentuan']" class="mt-0">
-              <template #label><span class="body-2">Saya menyetujui <router-link to="/terms" target="_blank" @click.stop>syarat dan ketentuan</router-link> serta kebijakan privasi.</span></template>
+              <template #label>
+                <span class="body-2">
+                  Saya menyetujui
+                  <a href="#" @click.prevent.stop="openDoc('terms')">syarat dan ketentuan</a>
+                  serta
+                  <a href="#" @click.prevent.stop="openDoc('privacy')">kebijakan privasi</a>.
+                </span>
+              </template>
             </v-checkbox>
             <v-btn type="submit" block large color="primary" class="register-btn mt-2" :loading="submitting">Daftar sebagai Customer</v-btn>
           </v-form>
@@ -36,12 +43,36 @@
         </v-col>
       </v-row>
     </v-card>
+
+    <v-dialog v-model="docDialog" max-width="720" scrollable>
+      <v-card>
+        <v-card-title class="text-h6">
+          {{ docType === 'terms' ? 'Syarat & Ketentuan' : 'Kebijakan Privasi' }}
+          <v-spacer />
+          <v-btn icon @click="docDialog = false"><v-icon>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-divider />
+        <v-card-text style="max-height:60vh">
+          <vue-element-loading :active="docLoading" />
+          <v-alert v-if="docError" type="error" dense text>{{ docError }}</v-alert>
+          <div v-else v-html="docContent"></div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="docDialog = false">Tutup</v-btn>
+          <v-btn color="primary" @click="acceptAndClose">Saya Setuju</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
 <script>
+import VueElementLoading from 'vue-element-loading'
 import AuthService from '@/services/AuthService'
 export default {
+  components: { VueElementLoading },
   data: () => ({
     valid: true, submitting: false, showPassword: false, accepted: false, serverError: null,
     form: { name:'', email:'', tel_number:'', password:'', password_confirmation:'' },
@@ -50,6 +81,7 @@ export default {
     emailRules: [v=>!!v||'Email wajib diisi',v=>/.+@.+\..+/.test(v)||'Format email tidak valid'],
     phoneRules: [v=>!!v||'Nomor telepon wajib diisi',v=>/^[0-9+()\-\s]{8,30}$/.test(v)||'Nomor telepon tidak valid'],
     passwordRules: [v=>!!v||'Password wajib diisi',v=>(v&&v.length>=8)||'Password minimal 8 karakter'],
+    docDialog: false, docType: 'terms', docContent: '', docLoading: false, docError: null,
   }),
   computed: { confirmationRules() { return [v=>!!v||'Konfirmasi password wajib diisi',v=>v===this.form.password||'Konfirmasi password tidak sama'] } },
   methods: {
@@ -64,6 +96,24 @@ export default {
         const data=error.response&&error.response.data; const errors=data&&data.errors
         this.serverError=errors?Object.values(errors).reduce((all,messages)=>all.concat(messages),[]).join(' '):(data&&data.message)||'Registrasi gagal. Silakan coba kembali.'
       } finally { this.submitting=false }
+    },
+    async openDoc(type) {
+      this.docType = type
+      this.docContent = ''
+      this.docError = null
+      this.docLoading = true
+      this.docDialog = true
+      try {
+        const url = type === 'terms' ? '/docs/terms' : '/docs/privacy-policy'
+        const r = await axios.get(url)
+        this.docContent = type === 'terms' ? r.data.terms : r.data.privacy
+      } catch (e) {
+        this.docError = type === 'terms' ? 'Syarat dan ketentuan belum dapat dimuat.' : 'Kebijakan privasi belum dapat dimuat.'
+      } finally { this.docLoading = false }
+    },
+    acceptAndClose() {
+      this.accepted = true
+      this.docDialog = false
     },
   },
 }

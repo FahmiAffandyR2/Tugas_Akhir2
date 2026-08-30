@@ -15,10 +15,15 @@ class CharterBooking extends Model
         'departure_date' => 'date:Y-m-d',
         'return_date' => 'date:Y-m-d',
         'quoted_price' => 'decimal:2',
+        'unit_price' => 'decimal:2',
+        'distance_km' => 'decimal:2',
+        'price_breakdown' => 'array',
         'passenger_count' => 'integer',
+        'requested_bus_count' => 'integer',
         'payment_submitted_at' => 'datetime',
         'paid_at' => 'datetime',
         'assigned_at' => 'datetime',
+        'payment_deadline' => 'datetime',
     ];
 
     protected $hidden = ['payment_proof_path'];
@@ -29,8 +34,12 @@ class CharterBooking extends Model
     }
 
     public function bus() { return $this->belongsTo(Bus::class); }
+    public function busType() { return $this->belongsTo(BusType::class); }
     public function driver() { return $this->belongsTo(User::class, 'driver_id'); }
     public function depot() { return $this->belongsTo(FleetDepot::class, 'depot_id'); }
+    public function originArea() { return $this->belongsTo(ServiceArea::class, 'origin_area_id'); }
+    public function destinationArea() { return $this->belongsTo(ServiceArea::class, 'destination_area_id'); }
     public function operationalTrip() { return $this->belongsTo(PlannedTrip::class, 'operational_planned_trip_id'); }
     public function revenueTransaction() { return $this->hasOne(CharterRevenueTransaction::class); }
+    public function assignments() { return $this->hasMany(CharterBookingAssignment::class); }
 }

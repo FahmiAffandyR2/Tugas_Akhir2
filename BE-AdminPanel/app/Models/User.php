@@ -27,6 +27,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'status_id',
         'role',
         'uid',
+        'google_id',
     ];
 
     /**
@@ -66,6 +67,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function trips() 
     {
         return $this->hasMany(Trip::class, 'driver_id');
+    }
+
+    public function plannedTrips()
+    {
+        return $this->hasMany(PlannedTrip::class, 'driver_id');
     }
     //bus
     public function bus()

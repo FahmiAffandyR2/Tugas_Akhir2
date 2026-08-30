@@ -11,14 +11,35 @@ class Bus extends Model
 
     protected $guarded = ['id', 'created_at', 'updated_at', 'deleted_at'];
 
+    protected $casts = [
+        'capacity' => 'integer',
+        'price_factor' => 'decimal:2',
+        'is_active' => 'boolean',
+    ];
+
     //driver
     public function driver()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'driver_id');
     }
 
     public function depot()
     {
         return $this->belongsTo(FleetDepot::class, 'depot_id');
+    }
+
+    public function busType()
+    {
+        return $this->belongsTo(BusType::class);
+    }
+
+    public function gpsLocations()
+    {
+        return $this->hasMany(GpsDeviceLocation::class);
+    }
+
+    public function latestGpsLocation()
+    {
+        return $this->hasOne(GpsDeviceLocation::class)->latestOfMany('recorded_at');
     }
 }

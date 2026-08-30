@@ -44,14 +44,16 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 import Echo from 'laravel-echo'
 
-// Realtime is optional. Do not let a missing/misconfigured Socket.IO server
+// Realtime is optional. Do not let a missing/misconfigured Pusher server
 // prevent the Vue application from mounting.
 if (process.env.VUE_APP_ECHO_ENABLED === 'true') {
     try {
-        window.io = require('socket.io-client');
+        window.Pusher = require('pusher-js');
         window.Echo = new Echo({
-            broadcaster: 'socket.io',
-            host: process.env.VUE_APP_ECHO_HOST || `${window.location.hostname}:6001`,
+            broadcaster: 'pusher',
+            key: process.env.VUE_APP_PUSHER_APP_KEY,
+            cluster: process.env.VUE_APP_PUSHER_CLUSTER,
+            forceTLS: true,
         });
     } catch (error) {
         console.warn('Realtime connection is disabled:', error);

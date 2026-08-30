@@ -17,7 +17,7 @@
       <v-row class="match-height">
         <v-col
           cols="12"
-          sm="6"
+          sm="4"
         >
           <statistics-card-vertical
             :change="totalDriversEarnings.change"
@@ -30,7 +30,7 @@
         </v-col>
         <v-col
           cols="12"
-          sm="6"
+          sm="4"
         >
           <statistics-card-vertical
             :change="totalRefunds.change"
@@ -39,6 +39,19 @@
             :statistics="totalRefunds.amount"
             :stat-title="totalRefunds.statTitle"
             :subtitle="totalRefunds.subtitle"
+          ></statistics-card-vertical>
+        </v-col>
+        <v-col
+          cols="12"
+          sm="4"
+        >
+          <statistics-card-vertical
+            :change="totalWarnings.change"
+            :color="totalWarnings.color"
+            :icon="totalWarnings.icon"
+            :statistics="totalWarnings.amount"
+            :stat-title="totalWarnings.statTitle"
+            :subtitle="totalWarnings.subtitle"
           ></statistics-card-vertical>
         </v-col>
       </v-row>
@@ -145,7 +158,7 @@
 
 <script>
 // eslint-disable-next-line object-curly-newline
-import { mdiCurrencyUsd, mdiCloseOctagonOutline } from '@mdi/js'
+import { mdiCurrencyUsd, mdiCloseOctagonOutline, mdiAlertOctagonOutline } from '@mdi/js'
 import StatisticsCardVertical from '@/components/statistics-card/StatisticsCardVertical.vue'
 import axios from 'axios'
 
@@ -186,6 +199,12 @@ export default {
         color: 'error',
         amount: '',
       },
+      totalWarnings: {
+        statTitle: 'Total Warnings',
+        icon: mdiAlertOctagonOutline,
+        color: 'warning',
+        amount: '',
+      },
       totalAdminEarnings: null,
       allCounts:
       [
@@ -224,6 +243,7 @@ export default {
         .then((response) => {
           this.totalDriversEarnings.amount = response.data.totalDriversEarnings;
           this.totalRefunds.amount = response.data.totalRefunds;
+          this.totalWarnings.amount = response.data.totalComplaints;
           this.totalAdminEarnings = response.data.totalAdminEarnings;
           this.allCounts[0].total = response.data.totalCustomers;
           this.allCounts[1].total = response.data.totalDrivers;

@@ -800,10 +800,6 @@ export default {
 .v-application ul {
     padding-left: 12px !important;
 }
-
-.gm-style .gm-style-iw-d {
-    color: #0d508b !important;
-}
 </style>
 <style lang="scss">
 .active-stop {

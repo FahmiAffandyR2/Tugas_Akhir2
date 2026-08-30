@@ -31,6 +31,13 @@
       <a v-if="item.bus" @click.stop="displayBus(item.bus)">{{
         item.bus.license
       }}</a>
+      <span v-else class="grey--text">-</span>
+    </template>
+
+    <template v-slot:item.trip_status="{ item }">
+      <v-chip small :color="tripStatus(item).color" dark>
+        {{ tripStatus(item).label }}
+      </v-chip>
     </template>
 
     <template v-slot:item.planned_date="{ item }">
@@ -46,11 +53,11 @@
     </template>
 
     <template v-slot:item.started_at="{ item }">
-      <small class="text-muted">{{ item.started_at | moment("LT") }}</small>
+      <small class="text-muted">{{ formatTime(item.started_at) }}</small>
     </template>
 
     <template v-slot:item.ended_at="{ item }">
-      <small class="text-muted">{{ item.ended_at | moment("LT") }}</small>
+      <small class="text-muted">{{ formatTime(item.ended_at) }}</small>
     </template>
     <template v-slot:item.actions="{ item }">
       <v-btn v-if="showNotification && item.booking_count > 0" depressed small density="compact" color="info"
@@ -93,6 +100,7 @@ export default {
         { text: "Driver", value: "driver.name" },
         { text: "Bus", value: "bus.license"},
         { text: "Route", value: "trip.route.name"},
+        { text: "Status", value: "trip_status" },
         { text: "Planned Start", value: "planned_start_date_time" },
         { text: "Planned End", value: "planned_end_date_time" },
         { text: "Booking", value: "booking_count" },
@@ -140,6 +148,14 @@ export default {
     },
     sendNotification(trip) {
       this.$emit("send-notification", trip);
+    },
+    tripStatus(trip) {
+      if (trip.ended_at) return { label: 'Selesai', color: 'success' };
+      if (trip.started_at) return { label: 'Berjalan', color: 'orange' };
+      return { label: 'Belum mulai', color: 'primary' };
+    },
+    formatTime(value) {
+      return value ? this.$moment(value).format("LT") : '-';
     },
   },
 };

@@ -26,9 +26,18 @@
           ></v-text-field>
         </template>
         <template v-slot:item.driver="{ item }">
-          <v-chip :color="getDriverAssignmentColor(item.driver)" dark @click="assignDriver(item)">
-            {{ getDriver(item.driver) }}
-          </v-chip>
+          <div>
+            <v-chip :color="getDriverAssignmentColor(item.driver)" dark @click="assignDriver(item)">
+              {{ getDriver(item.driver) }}
+            </v-chip>
+            <div v-if="item.driver && item.driver.status_id == 3" class="mt-1">
+              <v-alert type="warning" dense text class="mb-0" style="font-size:11px;">
+                Ditangguhkan{{ item.driver.suspended_until ? ' sampai ' + formatSuspendedUntil(item.driver.suspended_until) : '' }}
+                <br v-if="item.driver.suspension_reason" />
+                <small v-if="item.driver.suspension_reason">Alasan: {{ item.driver.suspension_reason }}</small>
+              </v-alert>
+            </div>
+          </div>
         </template>
         <template v-slot:item.depot="{ item }">
           <v-chip v-if="item.depot" small color="purple lighten-5" text-color="primary"><v-icon left x-small>mdi-garage-variant</v-icon>{{ item.depot.name }}</v-chip>
@@ -77,6 +86,19 @@
                     md="3"
                   >
                     <v-text-field
+                      v-model.trim="fleetNumber"
+                      :rules="fleetNumberRules"
+                      label="Nomor armada*"
+                      hint="Contoh: 72"
+                      required
+                    ></v-text-field>
+                  </v-col>
+                  <v-col
+                    cols="12"
+                    sm="6"
+                    md="3"
+                  >
+                    <v-text-field
                       v-model="license"
                       :rules="licenseRules"
                       label="License plate*"
@@ -94,6 +116,20 @@
                       label="Depo armada"
                       hint="Lokasi asal bus"
                       persistent-hint
+                    ></v-select>
+                  </v-col>
+                  <v-col cols="12" sm="6" md="3">
+                    <v-select
+                      v-model="busTypeId"
+                      :items="busTypes"
+                      item-text="name"
+                      item-value="id"
+                      :rules="busTypeRules"
+                      label="Kategori bus*"
+                      hint="Kapasitas mengikuti kategori"
+                      persistent-hint
+                      required
+                      @change="applySelectedBusType"
                     ></v-select>
                   </v-col>
                   <v-col
@@ -114,15 +150,19 @@
                     md="3"
                   >
                     <v-text-field
-                      v-model="price_factor"
-                      :rules="priceFactorRules"
-                      label="Pricing Factor*"
-                      hint="pricing factor of the bus, e.g. 1.5 means 50% more than the normal price"
-                      required
+                      v-model="priceFactor"
+                      label="Pricing Factor"
+                      hint="Diambil dari kategori bus"
+                      disabled
                     ></v-text-field>
                   </v-col>
+                  <v-col cols="12" sm="6" md="3">
+                    <v-switch
+                      v-model="isActive"
+                      label="Bus aktif"
+                    ></v-switch>
+                  </v-col>
                 </v-row>
-                <bus-seat-configurator class="my-6" @config-change="updateSeats" :initial-config="seatConfig"></bus-seat-configurator>
               </v-container>
             </v-card-text>
             <v-card-actions>
@@ -206,17 +246,16 @@
 import ActivationToolTip from "@/components/ActivationToolTip";
 import CreateButton from "@/components/CreateButton";
 import auth from '@/services/AuthService'
-import BusSeatConfigurator from './BusSeatConfigurator.vue'
 export default {
   components: {
     ActivationToolTip,
     CreateButton,
-    BusSeatConfigurator,
   },
   data() {
     return {
       buses: [],
       depots: [],
+      busTypes: [],
       availableDrivers: [],
       isLoading: false,
       search: "",
@@ -227,24 +266,31 @@ export default {
       id: null,
       selectedBus: null,
       depotId: null,
+      busTypeId: null,
+      fleetNumber: '',
       license: '',
+      isActive: true,
+      fleetNumberRules: [
+        v => !!v || 'Nomor armada wajib diisi',
+        v => (v && v.length <= 30) || 'Nomor armada maksimal 30 karakter',
+      ],
       licenseRules: [
         v => !!v || 'License plate is required',
         v => (v && v.length <= 15) || 'License plate must be less than 15 characters',
+      ],
+      busTypeRules: [
+        v => !!v || 'Kategori bus wajib dipilih',
       ],
       capacity: 20,
       capacityRules: [
         v => /^[0-9]+$/.test(v) || 'Capacity is not valid',
       ],
       priceFactor: '1',
-      priceFactorRules: // price factor must be greater than 0 and can be a decimal number
-        [
-            v => /^[0-9]+(\.[0-9]+)?$/.test(v) || 'Pricing factor is not valid',
-            v => v > 0 || 'Pricing factor must be greater than 0',
-        ],
       headers: [
         { text: "ID", value: "id", align: "start", filterable: false },
+        { text: "Nomor Armada", value: "fleet_number" },
         { text: "License", value: "license" },
+        { text: "Kategori", value: "busType.name" },
         { text: "Capacity", value: "capacity" },
         { text: "Pricing Factor", value: "price_factor" },
         { text: "Driver", value: "driver" },
@@ -268,6 +314,7 @@ export default {
   mounted() {
     this.loadBuses();
     this.loadDepots();
+    this.loadBusTypes();
   },
   methods: {
     loadBuses() {
@@ -298,6 +345,13 @@ export default {
         this.$notify({ title: 'Error', text: 'Lokasi depo tidak dapat dimuat', type: 'error' })
       })
     },
+    loadBusTypes() {
+      axios.get('/buses/types').then(response => {
+        this.busTypes = response.data.bus_types || []
+      }).catch(() => {
+        this.$notify({ title: 'Error', text: 'Kategori bus tidak dapat dimuat', type: 'error' })
+      })
+    },
     validate () {
       return this.$refs.form.validate()
     },
@@ -310,11 +364,12 @@ export default {
           .post(`/buses/create-edit`, {
             bus: {
               id: this.id,
+              fleet_number: this.fleetNumber,
               license: this.license,
-              capacity: this.capacity,
-              price_factor: this.price_factor,
+              bus_type_id: this.busTypeId,
               seat_config: JSON.stringify(this.seatConfig),
               depot_id: this.depotId,
+              is_active: this.isActive,
             },
           })
           .then((response) => {
@@ -341,33 +396,25 @@ export default {
       }
     },
     showBusDialog() {
+      this.fleetNumber = '';
       this.license = '';
-      this.price_factor = '1';
       this.id = null;
       this.depotId = null;
-      this.capacity = 20;
-      this.seatConfig = {
-        totalRows: 5,
-        totalColumns: 4,
-        seatGrid: [
-            [true, true, true, true],
-            [true, true, true, true],
-            [true, true, true, true],
-            [true, true, true, true],
-            [true, true, true, true],
-            ],
-      };
+      this.busTypeId = this.busTypes.length ? this.busTypes[0].id : null;
+      this.isActive = true;
+      this.applySelectedBusType();
       this.busDialog = true;
     },
     editBus(bus) {
       this.id = bus.id;
+      this.fleetNumber = bus.fleet_number || '';
       this.depotId = bus.depot_id || null;
+      this.busTypeId = bus.bus_type_id || null;
       this.license = bus.license;
       this.capacity = bus.capacity;
-      this.price_factor = bus.price_factor;
-      this.seatConfig = JSON.parse(bus.seat_config);
-      console.log(this.seatConfig);
-      this.updateCapacity();
+      this.priceFactor = bus.price_factor;
+      this.isActive = bus.is_active !== false;
+      this.seatConfig = bus.seat_config ? JSON.parse(bus.seat_config) : this.generateSeatConfig(this.capacity);
       this.busDialog = true;
     },
     deleteBus(bus, index) {
@@ -409,12 +456,17 @@ export default {
         });
     },
     getDriverAssignmentColor(driver) {
-      if (driver) return "success";
-      else return "error";
+      if (!driver) return "error";
+      if (driver.status_id == 3) return "warning";
+      return "success";
     },
     getDriver(driver) {
       if (driver) return driver.name;
       else return "none";
+    },
+    formatSuspendedUntil(date) {
+      if (!date) return '-';
+      return new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     },
     assignDriver(item) {
       this.selectedBus = item;
@@ -459,13 +511,13 @@ export default {
           this.$swal("Success", "Driver assigned to bus successfully", "success");
         })
         .catch((error) => {
+          const errorMsg = error.response?.data?.error || "Error while assigning driver to bus";
           this.$notify({
             title: "Error",
-            text: "Error while assigning driver to bus",
+            text: errorMsg,
             type: 'error'
           });
-          console.log(error);
-          this.$swal("Error", error.response.data.message, "error");
+          this.$swal("Error", errorMsg, "error");
         })
         .then(() => {
           this.loadingDrivers = false;
@@ -524,6 +576,34 @@ export default {
     updateSeats(seatConfig) {
       this.seatConfig = seatConfig;
       this.updateCapacity();
+    },
+    applySelectedBusType() {
+      const busType = this.busTypes.find(type => type.id === this.busTypeId);
+      if (!busType) return;
+      this.capacity = busType.capacity;
+      this.priceFactor = busType.price_factor;
+      this.seatConfig = this.generateSeatConfig(busType.capacity);
+    },
+    generateSeatConfig(capacity) {
+      const columns = 4;
+      const rows = Math.ceil(Number(capacity || 0) / columns);
+      let remaining = Number(capacity || 0);
+      const seatGrid = [];
+      for (let row = 0; row < rows; row++) {
+        const current = [];
+        for (let column = 0; column < columns; column++) {
+          current.push(remaining > 0);
+          remaining--;
+        }
+        seatGrid.push(current);
+      }
+      return {
+        totalRows: rows,
+        totalColumns: columns,
+        rows,
+        columns,
+        seatGrid,
+      };
     },
     updateCapacity() {
       let totalSeats = 0;

@@ -65,9 +65,14 @@
         icon="mdi-bus-multiple"
       ></nav-menu-link>
       <nav-menu-link
-        title="Depo Armada"
+        title="Fleet Depot"
         :to="{ name: 'fleet-depots' }"
-        icon="mdi-garage-variant"
+        icon="mdi-truck"
+      ></nav-menu-link>
+      <nav-menu-link
+        title="Shift Driver"
+        :to="{ name: 'driver-shifts' }"
+        icon="mdi-calendar-clock"
       ></nav-menu-link>
       <nav-menu-link
         title="Routes"
@@ -92,6 +97,30 @@
         ></nav-menu-link>
       <nav-menu-section-title title="REPORTS"></nav-menu-section-title>
       <nav-menu-link
+        v-if="false"
+        title="Driver Analytics"
+        :to="{ name: 'driver-analytics' }"
+        icon="mdi-chart-bar"
+      ></nav-menu-link>
+      <nav-menu-link
+        v-if="false"
+        title="Audit Log"
+        :to="{ name: 'audit-logs' }"
+        icon="mdi-history"
+      ></nav-menu-link>
+      <nav-menu-link
+        v-if="false"
+        title="Laporan Keuangan"
+        :to="{ name: 'financial-reports' }"
+        icon="mdi-cash-multiple"
+      ></nav-menu-link>
+      <nav-menu-link
+        v-if="adminProfileStore.customerLocationsCount > 0"
+        title="Customer Locations"
+        :to="{ name: 'customer-locations' }"
+        icon="mdi-map-marker-account"
+      ></nav-menu-link>
+      <nav-menu-link
         title="Booking Bus"
         :to="{ name: 'charter-bookings' }"
         icon="mdi-clipboard-text-clock-outline"
@@ -106,6 +135,18 @@
         title="Settings"
         :to="{ name: 'settings' }"
         icon="mdi-cog"
+      ></nav-menu-link>
+      <nav-menu-link
+        v-if="false"
+        title="Template Notifikasi"
+        :to="{ name: 'notification-templates' }"
+        icon="mdi-file-document-edit"
+      ></nav-menu-link>
+      <nav-menu-link
+        v-if="false"
+        title="Kirim Notifikasi"
+        :to="{ name: 'notifications' }"
+        icon="mdi-bell-ring"
       ></nav-menu-link>
       <!-- Privacy policy -->
       <nav-menu-link
@@ -142,6 +183,7 @@ import NavMenuSectionTitle from './components/NavMenuSectionTitle.vue'
 import NavMenuGroup from './components/NavMenuGroup.vue'
 import NavMenuLink from './components/NavMenuLink.vue'
 import {Keys} from '/src/config.js'
+import { adminProfileStore } from '@/utils/helpers'
 
 export default {
   components: {
@@ -170,7 +212,8 @@ export default {
         mdiMapMarkerPath,
         mdiCrosshairsGps
       },
-      systemName: Keys.VUE_APP_SYSTEM_NAME
+      systemName: Keys.VUE_APP_SYSTEM_NAME,
+      adminProfileStore,
     }
   },
 }

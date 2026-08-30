@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\BusType;
 use App\Repository\BusRepositoryInterface;
 use App\Repository\UserRepositoryInterface;
 use DB;
@@ -24,7 +25,7 @@ class BusController extends Controller
     public function index()
     {
         //get all buses
-        return response()->json($this->busRepository->all(['*'], ['driver', 'depot']), 200);
+        return response()->json($this->busRepository->all(['*'], ['driver', 'depot', 'busType']), 200);
     }
 
     public function getBus($bus_id)
@@ -39,10 +40,12 @@ class BusController extends Controller
         $this->validate($request, [
             'bus' => 'required',
             'bus.id' => 'integer|nullable',
+            'bus.fleet_number' => 'required|string|max:30',
             'bus.license' => 'required|string',
-            'bus.capacity' => 'required|integer',
+            'bus.bus_type_id' => 'required|integer|exists:bus_types,id',
             'bus.seat_config' => 'required',
             'bus.depot_id' => 'nullable|integer|exists:fleet_depots,id',
+            'bus.is_active' => 'boolean',
         ], [], []);
 
         $update = false;
@@ -51,18 +54,35 @@ class BusController extends Controller
         {
             //update
             $update = true;
-            $bus_id = $request->bus['id'];
+                $bus_id = $request->bus['id'];
         }
+
+        $existingFleet = $this->busRepository->findByWhere(['fleet_number' => $request->bus['fleet_number']], ['*'])
+            ->where('id', '!=', $bus_id);
+        if (!$existingFleet->isEmpty()) {
+            return response()->json(['errors' => ['fleet_number' => ['Nomor armada sudah digunakan.']]], 422);
+        }
+
+        $busType = BusType::where('id', $request->bus['bus_type_id'])->where('is_active', true)->first();
+        if (!$busType) {
+            return response()->json(['errors' => ['bus_type_id' => ['Kategori bus tidak aktif atau tidak valid.']]], 422);
+        }
+
+        $busData = $request->bus;
+        $busData['capacity'] = $busType->capacity;
+        $busData['price_factor'] = $busType->price_factor;
+        $busData['is_active'] = $busData['is_active'] ?? true;
+
         if($update)
         {
             //update the bus data
-            $this->busRepository->update($bus_id, $request->bus);
+            $this->busRepository->update($bus_id, $busData);
             return response()->json(['success' => ['bus updated successfully']]);
         }
         else
         {
             //create new bus
-            $this->busRepository->create($request->bus);
+            $this->busRepository->create($busData);
             return response()->json(['success' => ['bus created successfully']]);
         }
     }
@@ -76,11 +96,20 @@ class BusController extends Controller
 
     public function assignDriver(Request $request)
     {
-        //validate the request
         $this->validate($request, [
             'driver_id' => 'required|integer',
             'bus_id' => 'required|integer',
         ], [], []);
+
+        // Check if driver is suspended
+        $driver = \App\Models\User::find($request->driver_id);
+        if ($driver && $driver->status_id == 3) {
+            $reason = $driver->suspension_reason ?: 'Tidak ada alasan';
+            $until = $driver->suspended_until ? \Carbon\Carbon::parse($driver->suspended_until)->format('d M Y H:i') : '-';
+            return response()->json([
+                'error' => "Driver ini sedang ditangguhkan sampai {$until}. Alasan: {$reason}"
+            ], 400);
+        }
 
         //check if driver is already assigned to another bus
         $driverBus = $this->busRepository->findByWhere(['driver_id' => $request->driver_id], ['*']);
@@ -106,13 +135,21 @@ class BusController extends Controller
 
     private function getAvailableDriversQuery()
     {
-        //get all driver ids in bus table
         $existingBusDrivers = $this->busRepository->all(['driver_id'])->pluck('driver_id')->toArray();
-        //remove null values
         $existingBusDrivers = array_filter($existingBusDrivers);
-        //get all drivers that are not assigned to any bus
         $drivers = $this->driverRepository->findByNotWhereIn('id', [['role', '=', 2]], $existingBusDrivers, ['*']);
+        // Exclude suspended drivers
+        $drivers = $drivers->filter(function ($driver) {
+            return $driver->status_id != 3;
+        })->values();
         return $drivers;
+    }
+
+    public function busTypes()
+    {
+        return response()->json([
+            'bus_types' => BusType::where('is_active', true)->orderBy('capacity')->get(),
+        ]);
     }
 
     //un-assign driver from bus

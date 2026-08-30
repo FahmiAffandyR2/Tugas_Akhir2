@@ -23,7 +23,7 @@
       <v-tab-item>
         <trips-table
         :loading="isLoading"
-        :trips="activeTrips" :mode=1 @trashRestoreTrip="trashRestoreTrip"></trips-table>
+        :trips="activeTrips" :mode=1 @trashRestoreTrip="trashRestoreTrip" @completeRestoreTrip="completeRestoreTrip"></trips-table>
       </v-tab-item>
 
       <!-- suspended -->
@@ -38,6 +38,13 @@
         <trips-table
         :loading="isLoading"
         :trips="trashedTrips" :mode=3 @trashRestoreTrip="trashRestoreTrip"></trips-table>
+      </v-tab-item>
+
+      <!-- completed -->
+      <v-tab-item>
+        <trips-table
+        :loading="isLoading"
+        :trips="completedTrips" :mode=4 @completeRestoreTrip="completeRestoreTrip"></trips-table>
       </v-tab-item>
 
     </v-tabs-items>
@@ -56,6 +63,7 @@ import {
   mdiTrashCan,
   mdiDeleteRestore,
   mdiAirplane,
+  mdiCheckCircleOutline,
   mdiMotionPause
 } from "@mdi/js";
 
@@ -73,12 +81,14 @@ export default {
       activeTrips: [],
       trashedTrips: [],
       suspendedTrips: [],
+      completedTrips: [],
       isLoading: false,
       search: "",
       tabs: [
         { idx: 0, title: "Jadwal Aktif", icon: mdiAirplane },
         { idx: 1, title: "Ditangguhkan", icon: mdiMotionPause },
         { idx: 2, title: "Dinonaktifkan", icon: mdiTrashCan },
+        { idx: 3, title: "Selesai", icon: mdiCheckCircleOutline },
       ],
       active_tab: null,
       statuses: [
@@ -91,7 +101,8 @@ export default {
         mdiPlayCircleOutline,
         mdiTrashCan,
         mdiDeleteRestore,
-        mdiAirplane
+        mdiAirplane,
+        mdiCheckCircleOutline
       },
     };
   },
@@ -243,17 +254,64 @@ export default {
         });
     },
 
+    completeRestoreTrip(trip, index) {
+      const completing = trip.status_id == 1;
+      this.$swal
+        .fire({
+          title: completing ? "Tandai jadwal selesai" : "Kembalikan jadwal ke aktif",
+          text: completing
+            ? "Jadwal ini akan dipindahkan ke tab Selesai."
+            : "Jadwal ini akan dikembalikan ke tab Jadwal Aktif.",
+          icon: completing ? "success" : "info",
+          showCancelButton: true,
+          confirmButtonText: "Ya",
+          cancelButtonText: "Batal",
+        })
+        .then((result) => {
+          if (result.isConfirmed) {
+            this.completeRestoreTripServer(trip, index);
+          }
+        });
+    },
+    completeRestoreTripServer(trip, index) {
+      this.isSubmit = true;
+      axios
+        .post("/trips/complete-restore", {
+          trip_id: trip.id,
+        })
+        .then(() => {
+          this.isSubmit = false;
+          this.loadTrips();
+          this.$notify({
+            title: "Success",
+            text: trip.status_id == 1 ? "Jadwal dipindahkan ke Selesai" : "Jadwal dikembalikan ke Aktif",
+            type: "success",
+          });
+        })
+        .catch((error) => {
+          this.isSubmit = false;
+          this.$notify({
+            title: "Error",
+            text: "Error",
+            type: "error",
+          });
+          console.log(error);
+        });
+    },
+
     loadTrips() {
       this.isLoading = true;
       this.activeTrips = [];
       this.trashedTrips = [];
       this.suspendedTrips = [];
+      this.completedTrips = [];
       axios
         .get(`/trips/all`)
         .then((response) => {
           this.activeTrips = response.data.activeTrips;
           this.trashedTrips = response.data.trashedTrips;
           this.suspendedTrips = response.data.suspendedTrips;
+          this.completedTrips = response.data.completedTrips || [];
         })
         .catch((error) => {
           this.$notify({

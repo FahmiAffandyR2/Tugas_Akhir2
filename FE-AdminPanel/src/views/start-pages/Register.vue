@@ -36,7 +36,14 @@
               :rules="confirmationRules"
             />
             <v-checkbox v-model="accepted" :rules="[v => !!v || 'Anda harus menyetujui ketentuan']">
-              <template #label>Saya menyetujui kebijakan privasi dan ketentuan aplikasi.</template>
+              <template #label>
+                <span>
+                  Saya menyetujui
+                  <router-link to="/terms" target="_blank" @click.stop>syarat dan ketentuan</router-link>
+                  serta
+                  <router-link to="/privacy" target="_blank" @click.stop>kebijakan privasi</router-link>.
+                </span>
+              </template>
             </v-checkbox>
             <v-btn type="submit" block color="primary" class="mt-3" :loading="submitting">Daftar sebagai Driver</v-btn>
           </v-form>

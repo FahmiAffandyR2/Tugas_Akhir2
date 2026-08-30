@@ -3,6 +3,14 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Observers\AuditLogObserver;
+use App\Models\Bus;
+use App\Models\BusType;
+use App\Models\Route;
+use App\Models\Stop;
+use App\Models\Complaint;
+use App\Models\CharterBooking;
+use App\Models\FleetDepot;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,6 +32,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        Bus::observe(AuditLogObserver::class);
+        BusType::observe(AuditLogObserver::class);
+        Route::observe(AuditLogObserver::class);
+        Stop::observe(AuditLogObserver::class);
+        Complaint::observe(AuditLogObserver::class);
+        CharterBooking::observe(AuditLogObserver::class);
+        FleetDepot::observe(AuditLogObserver::class);
     }
 }

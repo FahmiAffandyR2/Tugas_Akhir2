@@ -15,6 +15,7 @@ use App\Repository\DriverDocumentRepositoryInterface;
 use App\Support\OptionalFirebase;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
 use Kreait\Firebase\Exception\Auth\UserNotFound;
 use Illuminate\Support\Facades\Auth as LaravelAuth;
 use DB;
@@ -60,7 +61,18 @@ class AuthController extends Controller
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            $status = Password::sendResetLink($request->only('email'));
+            try {
+                $status = Password::sendResetLink($request->only('email'));
+            } catch (\Throwable $e) {
+                Log::error('Password reset email failed', [
+                    'email' => $request->email,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'message' => 'Email reset password belum bisa dikirim. Periksa konfigurasi email server.',
+                ], 422);
+            }
 
             if ($status === Password::RESET_LINK_SENT) {
                 return response()->json(['message' => 'Link reset password telah dikirim ke email Anda.']);
@@ -106,6 +118,9 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'token' => 'required|string',
             'device_name' => 'required',
+            'portal' => 'nullable|in:internal,customer,all',
+            'role' => 'nullable|integer|in:0,1,2',
+            'name' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -126,32 +141,56 @@ class AuthController extends Controller
 
         //get user id
         $uid = $verifiedIdToken->claims()->get('sub');
+        $email = strtolower(trim((string) $verifiedIdToken->claims()->get('email')));
+        $emailVerified = (bool) $verifiedIdToken->claims()->get('email_verified');
+        $portal = $request->portal ?: 'all';
 
         $user = $this->userRepository->findByWhere([['uid', '=', $uid]])->first();
+        if (!$user && $email && $emailVerified) {
+            $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+            if ($user) {
+                $user->uid = $uid;
+                if (!$user->email_verified_at) {
+                    $user->email_verified_at = now();
+                }
+            }
+        }
+
         if ($user) {
             $user->request_delete_at = null;
             $user->save();
             //user exists
+            $role = (int) $user->role;
+            if ($portal === 'customer' && $role !== 1) {
+                return response()->json(['message' => 'Akun ini bukan akun customer. Silakan gunakan portal internal.'], 403);
+            }
+            if ($portal === 'internal' && !in_array($role, [0, 2], true)) {
+                return response()->json(['message' => 'Akun customer harus masuk melalui portal customer.'], 403);
+            }
             if (($user->role == 1 && $user->status_id != 1) ||($user->role == 2 && $user->status_id == 3))  {
                 //user is not active
                 return response()->json(['errors' => ['authentication' => ['User is not active. Please contact the admin.']]], 403);
             }
-            $user->tokens()->where('name', $request->device_name)->delete();
+            $tokenPortal = $portal === 'all'
+                ? ($role === 1 ? 'customer' : 'internal')
+                : $portal;
+            $tokenName = $tokenPortal . '-' . $request->device_name;
+            $user->tokens()->where('name', $tokenName)->delete();
             if ($request->has('fcm_token')) {
                 $user->fcm_token =  $request->fcm_token;
                 $user->save();
             }
             //create token
             $tokenAbility = "";
-            if ($user->role == 0)
+            if ($role == 0)
                 $tokenAbility = "admin";
-            else if ($user->role == 1)
+            else if ($role == 1)
                 $tokenAbility = "customer";
             else
                 $tokenAbility = "driver";
 
-            $token = $this->createToken($user, $request->device_name, [$tokenAbility]);
-            if($user->role == 1 || $user->role == 2)
+            $token = $this->createToken($user, $tokenName, [$tokenAbility]);
+            if($role == 1 || $role == 2)
             {
                 $token = $this->get_sec_id($token);
                 if($token == null)
@@ -190,24 +229,47 @@ class AuthController extends Controller
 
             //validate the request. Make sure it contains role
             $validator = Validator::make($request->all(), [
-                'role' => 'required|integer',
+                'role' => 'required|integer|in:1',
             ]);
 
-            if ($request->role == 0) {
-                return response()->json(['errors' => ['authentication' => ['User does not exist']]], 403);
+            if ($validator->fails()) {
+                return response()->json(['message' => 'Akun Google belum terdaftar. Silakan daftar sebagai customer terlebih dahulu.'], 403);
             }
+
+            if (!$email || !$emailVerified) {
+                return response()->json(['message' => 'Email Google harus terverifikasi.'], 403);
+            }
+
+            try {
+                $authUser = OptionalFirebase::auth()->getUser($uid);
+            } catch (\Exception $e) {
+                return OptionalFirebase::unavailableResponse($e);
+            }
+
+            $name = trim((string) $request->name);
+            if ($name === '') {
+                $name = trim((string) ($authUser->displayName ?? ''));
+            }
+            if ($name === '') {
+                $name = explode('@', $email)[0];
+            }
+
             //create user
             $user = new User();
             $user->uid = $uid;
-            $user->role = $request->role;
+            $user->role = 1;
             $user->status_id = 1;
-            $user->name = "";
+            $user->name = $name;
+            $user->email = $email;
+            $user->password = "";
+            $user->email_verified_at = now();
             if ($request->has('fcm_token')) {
                 $user->fcm_token =  $request->fcm_token;
             }
             $user->save();
+            $this->storeAvatar($user);
             //create token
-            $token = $this->createToken($user, $request->device_name, ["customer"]);
+            $token = $this->createToken($user, 'customer-' . $request->device_name, ["customer"]);
             //return token and user data
             return response()->json([
                 'token' => $token,
@@ -215,6 +277,143 @@ class AuthController extends Controller
             ]);
         }
     }
+
+    public function googleLogin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'code' => 'required|string',
+            'device_name' => 'required',
+            'portal' => 'nullable|in:internal,customer,all',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $clientId = config('services.google.client_id');
+        $clientSecret = config('services.google.client_secret');
+        $redirectUri = config('services.google.redirect_uri');
+
+        if (!$clientId || !$clientSecret) {
+            return response()->json(['message' => 'Google OAuth belum dikonfigurasi.'], 500);
+        }
+
+        // Exchange authorization code for tokens
+        $tokenResponse = Http::asForm()->post('https://oauth2.googleapis.com/token', [
+            'code' => $request->code,
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
+            'redirect_uri' => $redirectUri,
+            'grant_type' => 'authorization_code',
+        ]);
+
+        if ($tokenResponse->failed()) {
+            return response()->json(['message' => 'Gagal memverifikasi kode Google. Silakan coba lagi.'], 403);
+        }
+
+        $accessToken = $tokenResponse->json('access_token');
+
+        // Get user info from Google
+        $googleUser = Http::withToken($accessToken)->get('https://www.googleapis.com/oauth2/v2/userinfo');
+
+        if ($googleUser->failed()) {
+            return response()->json(['message' => 'Gagal mengambil data akun Google.'], 403);
+        }
+
+        $googleData = $googleUser->json();
+        $email = strtolower(trim($googleData['email'] ?? ''));
+        $name = trim($googleData['name'] ?? '');
+        $googleId = $googleData['id'] ?? '';
+        $emailVerified = $googleData['verified_email'] ?? false;
+        $portal = $request->portal ?: 'all';
+
+        if (!$email) {
+            return response()->json(['message' => 'Email tidak ditemukan dari akun Google.'], 403);
+        }
+
+        // Find or create user
+        $user = User::whereRaw('LOWER(email) = ?', [$email])->first();
+
+        if ($user) {
+            $user->request_delete_at = null;
+            if (!$user->google_id) {
+                $user->google_id = $googleId;
+            }
+            if (!$user->email_verified_at && $emailVerified) {
+                $user->email_verified_at = now();
+            }
+            $user->save();
+
+            $role = (int) $user->role;
+            if ($portal === 'customer' && $role !== 1) {
+                return response()->json(['message' => 'Akun ini bukan akun customer. Silakan gunakan portal internal.'], 403);
+            }
+            if ($portal === 'internal' && !in_array($role, [0, 2], true)) {
+                return response()->json(['message' => 'Akun customer harus masuk melalui portal customer.'], 403);
+            }
+            if (($user->role == 1 && $user->status_id != 1) || ($user->role == 2 && $user->status_id == 3)) {
+                return response()->json(['message' => 'Akun tidak aktif. Silakan hubungi admin.'], 403);
+            }
+
+            $tokenPortal = $portal === 'all'
+                ? ($role === 1 ? 'customer' : 'internal')
+                : $portal;
+            $tokenName = $tokenPortal . '-' . $request->device_name;
+            $user->tokens()->where('name', $tokenName)->delete();
+
+            $tokenAbility = $role == 0 ? 'admin' : ($role == 1 ? 'customer' : 'driver');
+            $token = $this->createToken($user, $tokenName, [$tokenAbility]);
+
+            if ($role == 1 || $role == 2) {
+                $token = $this->get_sec_id($token);
+                if ($token == null) {
+                    return response()->json(['message' => 'Error in generating token'], 403);
+                }
+            }
+
+            $driverInformation = null;
+            if ($user->role == 2) {
+                $driverInformation = $this->driverInformationRepository->findByWhere(['user_id' => $user->id])->first();
+                if ($driverInformation) {
+                    $driverDocuments = $this->driverDocumentRepository->findByWhere(['driver_information_id' => $driverInformation->id]);
+                    $driverInformation->documents = $driverDocuments;
+                }
+            }
+
+            return response()->json([
+                'token' => $token,
+                'user_data' => $user,
+                'driver_data' => $driverInformation,
+                'admin' => ($user->role == 0),
+            ]);
+        }
+
+        // New user - only allow customer registration
+        if (!$emailVerified) {
+            return response()->json(['message' => 'Email Google harus terverifikasi.'], 403);
+        }
+
+        $userName = $name ?: explode('@', $email)[0];
+
+        $user = new User();
+        $user->google_id = $googleId;
+        $user->role = 1;
+        $user->status_id = 1;
+        $user->name = $userName;
+        $user->email = $email;
+        $user->password = '';
+        $user->email_verified_at = now();
+        $user->save();
+        $this->storeAvatar($user);
+
+        $token = $this->createToken($user, 'customer-' . $request->device_name, ['customer']);
+
+        return response()->json([
+            'token' => $token,
+            'user_data' => $user,
+        ]);
+    }
+
     public function login(Request $request)
     {
         $request->merge([

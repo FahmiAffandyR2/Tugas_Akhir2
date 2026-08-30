@@ -4,7 +4,7 @@
       item-key="name"
       :loading="loading"
       loading-text="Loading... Please wait"
-      :headers="mode == 1 || mode == 3 ? headers : suspendedHeaders"
+      :headers="mode == 1 || mode == 3 || mode == 4 ? headers : suspendedHeaders"
       :items="trips"
       :search="search"
     >
@@ -17,7 +17,7 @@
       </template>
 
       <template
-        v-if="mode == 1 || mode == 3"
+        v-if="mode == 1 || mode == 3 || mode == 4"
         v-slot:item.first_stop_time="{ item }"
       >
         <small>{{ tConvert(item.first_stop_time) }}</small>
@@ -34,7 +34,7 @@
       </template>
 
       <template
-        v-if="mode == 1 || mode == 3"
+        v-if="mode == 1 || mode == 3 || mode == 4"
         v-slot:item.last_stop_time="{ item }"
       >
         <small>{{ tConvert(item.last_stop_time) }}</small>
@@ -44,7 +44,7 @@
         <small>{{ tConvert(item.trip.last_stop_time) }}</small>
       </template>
 
-      <template v-if="mode == 1 || mode == 3" v-slot:item.route.name="{ item }">
+      <template v-if="mode == 1 || mode == 3 || mode == 4" v-slot:item.route.name="{ item }">
         <a v-if="item.route.name" @click.stop="displayRoute(item.route.id)">{{
           item.route.name
         }}</a>
@@ -316,6 +316,7 @@ export default {
         {title: "Assign driver", icon: 'mdi-account-tie-hat'}, // 'mdi-account-tie-hat'
         {title: "Calendar", icon: 'mdi-calendar' }, // 'mdi-calendar'
         {title: "Duplicate", icon: 'mdi-content-duplicate' }, // 'mdi-content-duplicate'
+        {title: "Tandai selesai", icon: 'mdi-check-circle-outline' },
         {title: "Trash", icon: 'mdi-trash-can' }, // 'mdi-trash-can'
       ],
       actionItemsSuspended: [
@@ -327,6 +328,11 @@ export default {
         {title: "View", icon: 'mdi-eye' }, // 'mdi-eye'
         {title: "Calendar", icon: 'mdi-calendar' }, // 'mdi-calendar'
         {title: "Restore", icon: 'mdi-backup-restore' }, // 'mdi-backup-restore'
+      ],
+      actionItemsCompleted: [
+        {title: "View", icon: 'mdi-eye' },
+        {title: "Calendar", icon: 'mdi-calendar' },
+        {title: "Kembalikan ke aktif", icon: 'mdi-backup-restore' },
       ],
       headers: [
         { text: "ID", value: "id", align: "start"},
@@ -414,6 +420,10 @@ export default {
       {
         return this.actionItemsTrashed;
       }
+      else if(this.mode == 4)
+      {
+        return this.actionItemsCompleted;
+      }
     },
     doMenuAction(item, index) {
       if(this.mode == 1)
@@ -440,6 +450,10 @@ export default {
         }
         else if(index == 5)
         {
+          this.completeRestoreTrip(item, this.trips.indexOf(item));
+        }
+        else if(index == 6)
+        {
           this.trashRestoreTrip(item, this.trips.indexOf(item));
         }
       }
@@ -456,6 +470,21 @@ export default {
         else if(index == 2)
         {
           this.trashRestoreTrip(item, this.trips.indexOf(item));
+        }
+      }
+      else if(this.mode == 4)
+      {
+        if(index == 0)
+        {
+          this.viewTrip(item);
+        }
+        else if(index == 1)
+        {
+          this.viewTripCalendar(item);
+        }
+        else if(index == 2)
+        {
+          this.completeRestoreTrip(item, this.trips.indexOf(item));
         }
       }
     },
@@ -492,6 +521,9 @@ export default {
     trashRestoreTrip(trip, index) {
       this.$emit("trashRestoreTrip", trip, index);
     },
+    completeRestoreTrip(trip, index) {
+      this.$emit("completeRestoreTrip", trip, index);
+    },
 
     deleteSuspension(trip, index) {
       this.$emit("deleteSuspension", trip.id, index);
@@ -500,7 +532,7 @@ export default {
     viewTripCalendar(item) {
       var trip_id = null;
       var suspension_id = "none";
-      if (this.mode == 1 || this.mode == 3) {
+      if (this.mode == 1 || this.mode == 3 || this.mode == 4) {
         trip_id = item.id;
       } else {
         trip_id = item.trip.id;
@@ -513,7 +545,7 @@ export default {
     },
     viewTrip(item) {
       var trip_id = null;
-      if (this.mode == 1 || this.mode == 3) {
+      if (this.mode == 1 || this.mode == 3 || this.mode == 4) {
         trip_id = item.id;
       } else {
         trip_id = item.trip.id;
@@ -531,7 +563,7 @@ export default {
     },
     assignDriver(item) {
       var trip_id = null;
-      if (this.mode == 1 || this.mode == 3) {
+      if (this.mode == 1 || this.mode == 3 || this.mode == 4) {
         trip_id = item.id;
         this.selectedTrip = item;
       } else {

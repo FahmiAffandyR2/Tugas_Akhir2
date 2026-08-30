@@ -176,7 +176,6 @@ class DriverController extends Controller
     //assignBus
     public function assignBus(Request $request)
     {
-        //validate the request
         $this->validate($request, [
             'driver_id' => 'required|integer',
             'bus_id' => 'required|integer',
@@ -188,6 +187,16 @@ class DriverController extends Controller
         {
             return response()->json(['error' => ['Driver does not exist']], 422);
         }
+
+        // Check if driver is suspended
+        if ($driver->status_id == 3) {
+            $reason = $driver->suspension_reason ?: 'Tidak ada alasan';
+            $until = $driver->suspended_until ? \Carbon\Carbon::parse($driver->suspended_until)->format('d M Y H:i') : '-';
+            return response()->json([
+                'error' => "Driver ini sedang ditangguhkan sampai {$until}. Alasan: {$reason}"
+            ], 422);
+        }
+
         $bus = $this->busRepository->findById($bus_id);
         if(!$bus)
         {
@@ -198,10 +207,8 @@ class DriverController extends Controller
         {
             return response()->json(['error' => ['Bus is not available']], 422);
         }
-        //create transaction
         DB::beginTransaction();
         try {
-            //unassign driver from bus first
             if($driver->bus)
             {
                 $driver->bus->driver_id = null;

@@ -2,17 +2,16 @@
   <div>
     <vue-element-loading :active="submiting" :is-full-screen="true" />
     <v-card>
-      <!-- Page Heading -->
       <v-card-title>
-        Create new stop
+        {{ mode == 1 ? 'Edit' : 'Create' }} Stop
         <v-spacer></v-spacer>
         <v-btn depressed color="secondary" @click="$router.go(-1)" class="mx-1">
           Cancel
-          <v-icon right dark> mdi-keyboard-return </v-icon>
+          <v-icon right dark>mdi-keyboard-return</v-icon>
         </v-btn>
         <v-btn depressed color="primary" @click="saveStop" class="mx-1">
           {{ mode == 1 ? "Update" : "Save" }}
-          <v-icon right dark> mdi-content-save </v-icon>
+          <v-icon right dark>mdi-content-save</v-icon>
         </v-btn>
       </v-card-title>
       <v-card-text>
@@ -37,41 +36,61 @@
               </v-row>
               <v-row>
                 <v-col cols="12" md="3">
-                  <label for="stop-address">Address</label>
+                  <label for="stop-category">Kategori</label>
                 </v-col>
                 <v-col cols="12" md="9">
-                  <div
-                    class="
-                      v-input v-input--hide-details v-input--dense
-                      theme--light
-                      v-text-field
-                      v-text-field--is-booted
-                      v-text-field--enclosed
-                      v-text-field--outlined
-                      v-text-field--placeholder
-                    "
-                    :class="{ 'v-input--has-state error--text': badAddress }"
+                  <v-select
+                    id="stop-category"
+                    v-model="stop.category"
+                    :items="categoryOptions"
+                    outlined
+                    dense
+                  ></v-select>
+                </v-col>
+              </v-row>
+              <v-row>
+                <v-col cols="12" md="3">
+                  <label for="stop-address">Alamat</label>
+                </v-col>
+                <v-col cols="12" md="9">
+                  <v-text-field
+                    id="stop-address"
+                    v-model="addressSearch"
+                    outlined
+                    dense
+                    placeholder="Ketik nama tempat, tekan Enter"
+                    :rules="nameRules"
+                    @keyup.enter="searchAddress"
+                    :loading="searchingAddress"
                   >
-                    <div class="v-input__control">
-                      <div class="v-input__slot">
-                        <fieldset aria-hidden="true">
-                          <legend style="width: 0px">
-                            <span class="notranslate">​</span>
-                          </legend>
-                        </fieldset>
-                        <div class="v-text-field__slot">
-                          <GmapAutocomplete
-                            id="stop-address"
-                            ref="stopAddress"
-                            @place_changed="setPlace"
-                            placeholder="Stop Address"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    <template v-slot:append>
+                      <v-icon @click="searchAddress" :disabled="searchingAddress">mdi-magnify</v-icon>
+                    </template>
+                  </v-text-field>
+                  <div v-if="stop.address" class="caption grey--text mt-1">
+                    <v-icon x-small class="mr-1">mdi-map-marker</v-icon>{{ stop.address }}
                   </div>
                 </v-col>
               </v-row>
+
+              <!-- Tourist Fields -->
+              <template v-if="stop.category === 'tourist_attraction'">
+                <v-row>
+                  <v-col cols="12" md="3">
+                    <label for="stop-description">Deskripsi</label>
+                  </v-col>
+                  <v-col cols="12" md="9">
+                    <v-textarea
+                      id="stop-description"
+                      v-model="stop.description"
+                      outlined
+                      dense
+                      rows="3"
+                      placeholder="Deskripsi tempat wisata"
+                    ></v-textarea>
+                  </v-col>
+                </v-row>
+              </template>
             </v-col>
             <v-col cols="12" md="8">
               <LeafletMapLoader
@@ -80,8 +99,7 @@
                 :zoom="zoom"
                 :markers="markers"
                 @map-click="handleMapClick"
-              >
-              </LeafletMapLoader>
+              ></LeafletMapLoader>
             </v-col>
           </v-row>
         </v-form>
@@ -92,18 +110,13 @@
 
 <script>
 import LeafletMapLoader from "../../../components/LeafletMapLoader.vue";
-
-import draggable from "vuedraggable";
 import VueElementLoading from "vue-element-loading";
-
-import {Keys} from '/src/config.js'
+import { Keys } from "/src/config.js";
 
 export default {
   components: {
     LeafletMapLoader,
-    draggable,
     VueElementLoading,
-    Keys
   },
 
   data() {
@@ -112,23 +125,32 @@ export default {
       nameRules: [(v) => !!v || ""],
       stop_id: null,
       markers: [],
-      currentPlace: null,
       stop: {
-        id:null,
+        id: null,
         name: "",
-        place_id: "",
         address: "",
         lat: "",
         lng: "",
+        category: "regular",
+        description: "",
       },
+      addressSearch: "",
+      searchingAddress: false,
+      categoryOptions: [
+        { text: "Regular", value: "regular" },
+        { text: "Tempat Wisata", value: "tourist_attraction" },
+        { text: "Terminal", value: "terminal" },
+        { text: "Mall", value: "mall" },
+        { text: "Rumah Sakit", value: "hospital" },
+        { text: "Sekolah", value: "school" },
+      ],
       center: {
         lat: Keys.VUE_APP_ORIGIN_LAT,
         lng: Keys.VUE_APP_ORIGIN_LNG,
       },
       zoom: 15,
       submiting: false,
-      badAddress: false,
-      mode: null, //0: create, 1 edit
+      mode: null,
     };
   },
   mounted() {
@@ -137,48 +159,62 @@ export default {
     if (this.$route.params.stop_id != null) {
       this.stop_id = this.$route.params.stop_id;
       this.mode = 1;
-      this.fetchStop()
+      this.fetchStop();
     } else {
       this.mode = 0;
     }
     this.geolocate();
   },
   methods: {
-    setPlace(place) {
-      this.currentPlace = place;
-      this.updateStopFromPlace(place);
-      this.addStopMarker();
+    async searchAddress() {
+      if (!this.addressSearch || this.addressSearch.trim().length < 3) return;
+      this.searchingAddress = true;
+      try {
+        const query = encodeURIComponent(this.addressSearch);
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&countrycodes=id`, {
+          headers: { 'Accept-Language': 'id' }
+        });
+        const results = await response.json();
+        if (results.length > 0) {
+          const place = results[0];
+          this.stop.lat = parseFloat(place.lat);
+          this.stop.lng = parseFloat(place.lon);
+          this.stop.address = place.display_name;
+          this.addStopMarker();
+          this.center = { lat: this.stop.lat, lng: this.stop.lng };
+          this.zoom = 16;
+        } else {
+          this.$notify({ title: "Info", text: "Tempat tidak ditemukan, coba kata kunci lain", type: "info" });
+        }
+      } catch (error) {
+        console.error("Geocoding error:", error);
+        this.$notify({ title: "Error", text: "Gagal mencari alamat", type: "error" });
+      } finally {
+        this.searchingAddress = false;
+      }
     },
     addStopMarker() {
-      if (this.stop) {
+      if (this.stop.lat && this.stop.lng) {
         const position = {
           lat: parseFloat(this.stop.lat),
           lng: parseFloat(this.stop.lng),
         };
-        let marker = {
-          place_id: this.stop.place_id,
+        this.markers = [{
+          place_id: "stop-marker",
           position: position,
-          infoText:
-            "<strong>" + this.stop.name + "</strong><br/>" + this.stop.address,
-        };
-        this.markers = [];
-        this.markers.push(marker);
+          infoText: "<strong>" + this.stop.name + "</strong><br/>" + this.stop.address,
+        }];
         this.center = position;
       }
     },
     handleMapClick(place) {
-      this.setPlace(place);
-      this.$nextTick(() => {
-        this.$refs.stopAddress.$el.value = this.stop.address;
-      });
-    },
-    updateStopFromPlace(place) {
-      this.stop.place_id = place.place_id;
-      this.stop.address = place.formatted_address;
       this.stop.lat = place.geometry.location.lat();
       this.stop.lng = place.geometry.location.lng();
+      this.stop.address = place.formatted_address || this.stop.address;
+      this.addressSearch = this.stop.address;
+      this.addStopMarker();
     },
-    geolocate: function () {
+    geolocate() {
       navigator.geolocation.getCurrentPosition((position) => {
         this.center = {
           lat: position.coords.latitude,
@@ -187,33 +223,34 @@ export default {
       });
     },
     validate() {
-      this.badAddress = this.stop.address == ''
       return this.$refs.form.validate();
     },
-    //API Calls
     saveStop() {
-      if (!this.validate() || this.badAddress) return;
+      if (!this.validate() || !this.stop.lat) {
+        if (!this.stop.lat) {
+          this.$notify({ title: "Error", text: "Cari dan pilih alamat terlebih dahulu", type: "error" });
+        }
+        return;
+      }
       this.submiting = true;
+      const stopData = { ...this.stop };
+      if (stopData.category !== "tourist_attraction") {
+        delete stopData.description;
+      }
       axios
-        .post("/stops/create-edit", {
-          stop: this.stop,
-        })
-        .then((response) => {
+        .post("/stops/create-edit", { stop: stopData })
+        .then(() => {
           this.submiting = false;
           this.$notify({
             title: "Success",
-            text: this.mode ==1? "Stop updated!" : "Stop created!",
+            text: this.mode == 1 ? "Stop updated!" : "Stop created!",
             type: "success",
           });
           this.$router.replace({ name: "stops" });
         })
         .catch((error) => {
           this.submiting = false;
-          this.$notify({
-            title: "Error",
-            text: "Error creating stop",
-            type: "error",
-          });
+          this.$notify({ title: "Error", text: "Error creating stop", type: "error" });
           console.log(error);
           this.$swal("Error", error.response.data.message, "error");
         });
@@ -224,21 +261,23 @@ export default {
         .get(`/stops/${this.stop_id}`)
         .then((response) => {
           this.submiting = false;
-          this.stop = response.data;
-          this.stop.lat = parseFloat(this.stop.lat);
-          this.stop.lng = parseFloat(this.stop.lng);
-          this.$refs.stopAddress.$el.value = this.stop.address;
+          const data = response.data;
+          this.stop = {
+            id: data.id,
+            name: data.name || "",
+            address: data.address || "",
+            lat: parseFloat(data.lat) || "",
+            lng: parseFloat(data.lng) || "",
+            category: data.category || "regular",
+            description: data.description || "",
+          };
+          this.addressSearch = this.stop.address;
           this.addStopMarker();
         })
         .catch((error) => {
           this.submiting = false;
-          this.$notify({
-            title: "Error",
-            text: "Error fetching stop data",
-            type: "error",
-          });
+          this.$notify({ title: "Error", text: "Error fetching stop data", type: "error" });
           console.log(error);
-          //this.$router.go(-1);
         });
     },
   },
@@ -249,38 +288,27 @@ export default {
 .flip-list-move {
   transition: transform 0.5s;
 }
-
 .no-move {
   transition: transform 0s;
 }
-
 .ghost {
   opacity: 0.5;
   background: #c8ebfb;
 }
-
 .list-group {
   min-height: 20px;
 }
-
 .list-group-item {
   cursor: move;
 }
-
 .list-group-item i {
   cursor: pointer;
 }
-
 .v-application ul {
   padding-left: 12px !important;
 }
-
 .input--error {
   border-color: red;
-}
-
-.gm-style .gm-style-iw-d {
-  color: #0d508b !important;
 }
 </style>
 
@@ -288,3 +316,4 @@ export default {
 .active-stop {
   background: rgba($primary-shade--light, 0.15) !important;
 }
+</style>

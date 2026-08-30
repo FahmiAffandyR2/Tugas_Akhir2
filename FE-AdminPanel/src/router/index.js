@@ -7,7 +7,9 @@ Vue.use(VueRouter)
 const routes = [
   {
     path: '/',
-    redirect: 'dashboard',
+    name: 'landing',
+    component: () => import('@/views/Landing.vue'),
+    meta: { layout: 'blank' },
   },
   {
     path: '/customer/login',
@@ -42,6 +44,24 @@ const routes = [
     path: '/customer/profil',
     name: 'customer-profile',
     component: () => import('@/views/shared/Profile.vue'),
+    meta: { layout: 'customer', customerOnly: true },
+  },
+  {
+    path: '/customer/wisata',
+    name: 'customer-tourist-stops',
+    component: () => import('@/views/customer/TouristStops.vue'),
+    meta: { layout: 'customer', customerOnly: true },
+  },
+  {
+    path: '/customer/wisata/:stop_id',
+    name: 'customer-stop-detail',
+    component: () => import('@/views/customer/StopDetail.vue'),
+    meta: { layout: 'customer', customerOnly: true },
+  },
+  {
+    path: '/customer/perjalanan',
+    name: 'customer-live-tracking',
+    component: () => import('@/views/customer/LiveTracking.vue'),
     meta: { layout: 'customer', customerOnly: true },
   },
   {
@@ -118,6 +138,11 @@ const routes = [
       path: '/fleet-depots',
       name: 'fleet-depots',
       component: () => import('@/views/system-setup/fleet-depots/index.vue'),
+    },
+    {
+      path: '/fleet-depots/:depot_id',
+      name: 'fleet-depot-detail',
+      component: () => import('@/views/system-setup/fleet-depots/show.vue'),
     },
     //////////////////////////buses////////////////////////////////
     {
@@ -243,6 +268,43 @@ const routes = [
         name: "live-tracking",
         component: () => import("@/views/live-tracking/index.vue"),
     },
+  //////////////////////////reports////////////////////////////////
+    {
+        path: "/reports/drivers",
+        name: "driver-analytics",
+        component: () => import("@/views/reports/drivers/index.vue"),
+    },
+    {
+        path: "/audit-logs",
+        name: "audit-logs",
+        component: () => import("@/views/audit-logs/index.vue"),
+    },
+    {
+        path: "/notification-templates",
+        name: "notification-templates",
+        component: () => import("@/views/notification-templates/index.vue"),
+    },
+    {
+        path: "/notifications",
+        name: "notifications",
+        component: () => import("@/views/notifications/index.vue"),
+    },
+    {
+        path: "/reports/financial",
+        name: "financial-reports",
+        component: () => import("@/views/reports/financial/index.vue"),
+    },
+    {
+        path: "/driver-shifts",
+        name: "driver-shifts",
+        component: () => import("@/views/driver-shifts/index.vue"),
+    },
+  //////////////////////////customer-locations////////////////////////////////
+    {
+        path: "/customer-locations",
+        name: "customer-locations",
+        component: () => import("@/views/customer-locations/index.vue"),
+    },
   //////////////////////////settings///////////////////////////////////
   {
     path: '/settings',
@@ -289,6 +351,14 @@ const routes = [
     path: '/login',
     name: 'login',
     component: () => import('@/views/start-pages/Login.vue'),
+    meta: {
+      layout: 'blank'
+    },
+  },
+  {
+    path: '/auth/google/callback',
+    name: 'google-callback',
+    component: () => import('@/views/start-pages/GoogleCallback.vue'),
     meta: {
       layout: 'blank'
     },

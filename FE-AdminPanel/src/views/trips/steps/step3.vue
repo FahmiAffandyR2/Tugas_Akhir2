@@ -10,7 +10,6 @@ export default {
   props: {
     center: Object,
     zoom: Number,
-    apiKey: String,
     markers: Array,
     selected: String,
     enabled: Boolean,

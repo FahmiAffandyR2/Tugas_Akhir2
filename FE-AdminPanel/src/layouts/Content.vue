@@ -157,8 +157,19 @@ export default {
       this.loadNotifications()
     }, 10000)
   },
+  computed: {
+    isAdmin() {
+      return Number(localStorage.getItem('internalRole') || localStorage.getItem('userRole')) === 0;
+    },
+  },
   methods: {
     loadNotifications() {
+      if (!this.isAdmin) {
+        this.driversNotification.count = 0;
+        this.activationStore.isActivated = true;
+        return;
+      }
+
       axios.get('/notifications/all').then((response) => {
         this.driversNotification.count = response.data.driversUnderReviewCount;
         this.adminProfileStore.name = response.data.adminName;
@@ -172,7 +183,17 @@ export default {
         {
           this.activationStore.isActivated = true;
         }
+
+        axios.get('/customer-locations/count').then((res) => {
+          this.adminProfileStore.customerLocationsCount = res.data.total;
+        }).catch(() => {});
       }).catch((error) => {
+        const status = error.response && error.response.status;
+        if (status === 401 || status === 403) {
+          this.driversNotification.count = 0;
+          return;
+        }
+
         console.error('Unable to load notifications', {
           status: error.response && error.response.status,
           url: error.config && error.config.url,

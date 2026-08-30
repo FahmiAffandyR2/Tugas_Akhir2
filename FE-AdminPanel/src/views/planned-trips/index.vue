@@ -6,6 +6,10 @@
         mdi-airplane-clock
       </v-icon>
         <span class="pl-2">Time Table</span>
+        <v-spacer></v-spacer>
+        <v-btn icon :loading="isLoading" @click="loadPlannedTrips">
+          <v-icon>mdi-refresh</v-icon>
+        </v-btn>
       </v-card-title>
       <v-tabs v-model="active_tab" show-arrows class="my-2">
         <v-tab v-for="tab in tabs" :key="tab.idx">
@@ -77,6 +81,7 @@ export default {
         { idx: 2, title: "Completed", icon: mdiAccountCheck },
       ],
       active_tab: null,
+      refreshTimer: null,
       icons: {
         mdiAccountCheck,
         mdiAirplane,
@@ -92,10 +97,16 @@ export default {
   mounted() {
     this.active_tab = parseInt(localStorage.tabIdxPlannedTrips);
     this.loadPlannedTrips();
+    this.refreshTimer = window.setInterval(() => {
+      this.loadPlannedTrips(false);
+    }, 15000);
+  },
+  beforeDestroy() {
+    if (this.refreshTimer) window.clearInterval(this.refreshTimer);
   },
   methods: {
-    loadPlannedTrips() {
-      this.isLoading = true;
+    loadPlannedTrips(showLoading = true) {
+      if (showLoading) this.isLoading = true;
       axios
         .get(`/planned-trips/all`)
         .then((response) => {
@@ -113,7 +124,7 @@ export default {
           auth.checkError(error.response.data.message, this.$router, this.$swal);
         })
         .then(() => {
-          this.isLoading = false;
+          if (showLoading) this.isLoading = false;
         });
     },
     sendNotification(reservation, index){

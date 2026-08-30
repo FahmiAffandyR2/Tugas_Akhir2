@@ -417,36 +417,66 @@ export default {
       });
     },
     suspendActivateUser(user, index) {
-      this.$swal
-        .fire({
-          title: (user.status_id!=1? "Activate" : "Suspend") + " user",
-          text: "Are you sure to " + (user.status_id!=1? "activate" : "suspend")  + " the user ' " + user.name + " ' ?",
-          icon: user.status_id!=1? "success" : "error",
-          showCancelButton: true,
-          confirmButtonText: "Yes",
-        })
-        .then((result) => {
-          if (result.isConfirmed) {
-            this.suspendActivateUserServer(user, index);
-          }
-        });
+      if (user.status_id == 1) {
+        // Suspending - ask for reason
+        this.$swal
+          .fire({
+            title: "Suspend user",
+            text: "Are you sure to suspend the user '" + user.name + "' for 3 days?",
+            icon: "warning",
+            input: "text",
+            inputLabel: "Alasan suspensi (opsional)",
+            inputPlaceholder: "Contoh: Pelanggaran peraturan",
+            showCancelButton: true,
+            confirmButtonText: "Ya, Suspend",
+            confirmButtonColor: "#d33",
+          })
+          .then((result) => {
+            if (result.isConfirmed) {
+              this.suspendActivateUserServer(user, index, result.value || null);
+            }
+          });
+      } else {
+        // Activating
+        this.$swal
+          .fire({
+            title: "Activate user",
+            text: "Are you sure to activate the user '" + user.name + "'?",
+            icon: "success",
+            showCancelButton: true,
+            confirmButtonText: "Yes",
+          })
+          .then((result) => {
+            if (result.isConfirmed) {
+              this.suspendActivateUserServer(user, index, null);
+            }
+          });
+      }
     },
-    suspendActivateUserServer(user, indexx) {
+    suspendActivateUserServer(user, indexx, reason) {
       this.isSubmit = true;
       axios
         .post('/users/suspend-activate', {
           user_id: user.id,
+          reason: reason,
         })
         .then((response) => {
           this.isSubmit = false;
-          //get the index
           let index = this.users.indexOf(user);
-          this.users[index].status_id = user.status_id!=1 ? 1:3;
-          this.activeUsers = this.users.filter(user => user.status_id === 1);
-          this.suspendedUsers = this.users.filter(user => user.status_id === 3);
+          this.users[index].status_id = user.status_id != 1 ? 1 : 3;
+          if (user.status_id == 1) {
+            // Was active, now suspended
+            this.users[index].suspended_until = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+          } else {
+            // Was suspended, now active
+            this.users[index].suspended_until = null;
+            this.users[index].suspension_reason = null;
+          }
+          this.activeUsers = this.users.filter(u => u.status_id === 1);
+          this.suspendedUsers = this.users.filter(u => u.status_id === 3);
           this.$notify({
             title: "Success",
-            text: "User " + (user.status_id!=1? "suspended" : "activated"),
+            text: "User " + (user.status_id != 1 ? "activated" : "suspended") + " successfully",
             type: "success",
           });
         })

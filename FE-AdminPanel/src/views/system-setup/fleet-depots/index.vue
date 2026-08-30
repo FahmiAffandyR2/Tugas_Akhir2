@@ -9,9 +9,9 @@
             <v-text-field v-model="search" outlined dense hide-details prepend-inner-icon="mdi-magnify" label="Cari depo atau kota" class="mb-4" />
             <v-skeleton-loader v-if="loading" type="list-item-avatar-three-line@3" />
             <v-list v-else-if="filteredDepots.length" two-line>
-              <v-list-item v-for="depot in filteredDepots" :key="depot.id" @click="selectDepot(depot)">
+              <v-list-item v-for="depot in filteredDepots" :key="depot.id" @click="goToDetail(depot)">
                 <v-list-item-avatar color="purple lighten-5"><v-icon color="primary">mdi-bus-multiple</v-icon></v-list-item-avatar>
-                <v-list-item-content><v-list-item-title class="font-weight-bold">{{ depot.name }}</v-list-item-title><v-list-item-subtitle>{{ depot.city }} · {{ depot.buses_count }} bus</v-list-item-subtitle></v-list-item-content>
+                <v-list-item-content><v-list-item-title class="font-weight-bold">{{ depot.name }}</v-list-item-title><v-list-item-subtitle>{{ depot.city }} · {{ depot.available_buses_count }} bus tersedia</v-list-item-subtitle></v-list-item-content>
                 <v-chip x-small :color="depot.is_active?'success':'grey'" dark>{{ depot.is_active?'Aktif':'Nonaktif' }}</v-chip>
                 <v-btn icon small @click.stop="openEdit(depot)"><v-icon small>mdi-pencil</v-icon></v-btn>
                 <v-btn icon small color="error" @click.stop="removeDepot(depot)"><v-icon small>mdi-delete</v-icon></v-btn>
@@ -38,6 +38,7 @@
           <v-col cols="12"><div class="caption mb-2">Klik peta untuk menentukan koordinat depo.</div><leaflet-map-loader :center="formCenter" :zoom="12" :markers="formMarkers" :enabled="true" class="picker-map" @map-click="setCoordinates" /></v-col>
           <v-col cols="6"><v-text-field v-model.number="form.latitude" type="number" step="any" outlined label="Latitude" :rules="coordinateRules" /></v-col>
           <v-col cols="6"><v-text-field v-model.number="form.longitude" type="number" step="any" outlined label="Longitude" :rules="coordinateRules" /></v-col>
+          <v-col cols="12" sm="6"><v-text-field v-model.number="form.geofence_radius" type="number" outlined label="Radius Geofence (meter)" hint="Jarak deteksi bus tiba di pool" persistent-hint /></v-col>
           <v-col cols="12" sm="6"><v-text-field v-model.trim="form.contact_name" outlined label="Penanggung jawab" /></v-col>
           <v-col cols="12" sm="6"><v-text-field v-model.trim="form.contact_phone" outlined label="Nomor telepon" /></v-col>
           <v-col cols="12"><v-switch v-model="form.is_active" label="Depo aktif dan dapat digunakan" /></v-col>
@@ -50,7 +51,7 @@
 
 <script>
 import LeafletMapLoader from '@/components/LeafletMapLoader.vue'
-const emptyForm=()=>({id:null,name:'',city:'',address:'',latitude:-6.208763,longitude:106.845599,contact_name:'',contact_phone:'',is_active:true})
+const emptyForm=()=>({id:null,name:'',city:'',address:'',latitude:-6.208763,longitude:106.845599,geofence_radius:500,contact_name:'',contact_phone:'',is_active:true})
 export default{
  components:{LeafletMapLoader},
  data:()=>({depots:[],loading:false,saving:false,search:'',dialog:false,valid:true,selectedMarker:null,form:emptyForm(),required:[v=>!!v||'Wajib diisi'],coordinateRules:[v=>v!==null&&v!==''||'Koordinat wajib diisi']}),
@@ -66,7 +67,8 @@ export default{
   async loadDepots(){this.loading=true;try{const r=await axios.get('/fleet-depots');this.depots=r.data.depots||[]}catch(e){this.notifyError(e,'Data depo tidak dapat dimuat.')}finally{this.loading=false}},
   openCreate(){this.form=emptyForm();this.dialog=true},
   openEdit(depot){this.form={...depot,latitude:Number(depot.latitude),longitude:Number(depot.longitude)};this.dialog=true},
-  selectDepot(depot){this.selectedMarker=`depot-${depot.id}`},
+   selectDepot(depot){this.selectedMarker=`depot-${depot.id}`},
+   goToDetail(depot){this.$router.push(`/fleet-depots/${depot.id}`)},
   setCoordinates(place){this.form.latitude=Number(place.geometry.location.lat().toFixed(7));this.form.longitude=Number(place.geometry.location.lng().toFixed(7))},
   async save(){if(!this.$refs.form.validate())return;this.saving=true;try{const r=this.form.id?await axios.put(`/fleet-depots/${this.form.id}`,this.form):await axios.post('/fleet-depots',this.form);this.$notify({type:'success',title:'Berhasil',text:r.data.message});this.dialog=false;await this.loadDepots()}catch(e){this.notifyError(e,'Depo gagal disimpan.')}finally{this.saving=false}},
   async removeDepot(depot){const result=await this.$swal.fire({title:'Hapus depo?',text:`Depo ${depot.name} akan dihapus.`,icon:'warning',showCancelButton:true,confirmButtonText:'Hapus',cancelButtonText:'Batal'});if(!result.isConfirmed)return;try{const r=await axios.delete(`/fleet-depots/${depot.id}`);this.$notify({type:'success',title:'Berhasil',text:r.data.message});await this.loadDepots()}catch(e){this.notifyError(e,'Depo gagal dihapus.')}},

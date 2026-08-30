@@ -52,6 +52,10 @@ export default {
       type: Array,
       default: () => [],
     },
+    animate: {
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
@@ -60,13 +64,15 @@ export default {
       markerLayer: null,
       polylineLayer: null,
       markerRefs: [],
+      markerMap: {},
+      animationFrames: {},
     };
   },
   watch: {
     markers: {
       deep: true,
-      handler() {
-        this.renderMarkers();
+      handler(newVal, oldVal) {
+        this.updateMarkersIncremental(newVal);
       },
     },
     polylines: {
@@ -90,7 +96,7 @@ export default {
     loadLeaflet().then((L) => {
       this.L = L;
       this.initMap();
-      this.renderMarkers();
+      this.updateMarkersIncremental(this.markers);
       this.renderPolylines();
       this.$nextTick(() => {
         this.map.invalidateSize();
@@ -99,6 +105,10 @@ export default {
     });
   },
   beforeDestroy() {
+    Object.keys(this.animationFrames).forEach(id => {
+      cancelAnimationFrame(this.animationFrames[id]);
+    });
+    this.animationFrames = {};
     if (this.map) {
       this.map.remove();
     }
@@ -135,40 +145,138 @@ export default {
         });
       });
     },
-    renderMarkers() {
+
+    updateMarkersIncremental(newMarkers) {
       if (!this.map || !this.markerLayer) return;
 
-      this.markerLayer.clearLayers();
-      this.markerRefs = [];
+      const newIds = new Set(newMarkers.map(m => m.place_id));
+      const existingIds = new Set(Object.keys(this.markerMap));
 
-      this.markers.forEach((marker) => {
+      existingIds.forEach(id => {
+        if (!newIds.has(id)) {
+          if (this.markerMap[id]) {
+            this.markerLayer.removeLayer(this.markerMap[id]);
+            delete this.markerMap[id];
+          }
+          if (this.animationFrames[id]) {
+            cancelAnimationFrame(this.animationFrames[id]);
+            delete this.animationFrames[id];
+          }
+        }
+      });
+
+      newMarkers.forEach(marker => {
         if (!marker.position) return;
 
-        const options = {};
-        if (marker.icon) {
-          options.icon = this.L.icon({
-            iconUrl: marker.icon,
-            iconSize: [32, 32],
-            iconAnchor: [16, 32],
-            popupAnchor: [0, -32],
-          });
+        const existing = this.markerMap[marker.place_id];
+
+        if (existing) {
+          const currentLatLng = existing.getLatLng();
+          const newLatLng = [marker.position.lat, marker.position.lng];
+          const distance = currentLatLng.distanceTo(this.L.latLng(newLatLng));
+
+          if (distance < 0.5) return;
+
+          if (this.animate && distance > 1) {
+            this.animateMarker(existing, currentLatLng, newLatLng, marker);
+          } else {
+            existing.setLatLng(newLatLng);
+            if (marker.infoText) {
+              existing.setPopupContent(marker.infoText);
+            }
+          }
+        } else {
+          const options = {};
+          if (marker.icon) {
+            options.icon = this.L.icon({
+              iconUrl: marker.icon,
+              iconSize: [32, 32],
+              iconAnchor: [16, 32],
+              popupAnchor: [0, -32],
+            });
+          }
+
+          const leafletMarker = this.L.marker(
+            [marker.position.lat, marker.position.lng],
+            options
+          );
+
+          if (marker.infoText) {
+            leafletMarker.bindPopup(marker.infoText);
+          }
+
+          leafletMarker.addTo(this.markerLayer);
+          this.markerMap[marker.place_id] = leafletMarker;
         }
-
-        const leafletMarker = this.L.marker(
-          [marker.position.lat, marker.position.lng],
-          options
-        );
-
-        if (marker.infoText) {
-          leafletMarker.bindPopup(marker.infoText);
-        }
-
-        leafletMarker.addTo(this.markerLayer);
-        this.markerRefs.push({ id: marker.place_id, marker: leafletMarker });
       });
+
+      this.markerRefs = Object.entries(this.markerMap).map(([id, marker]) => ({
+        id,
+        marker,
+      }));
 
       this.openSelectedMarker();
     },
+
+    animateMarker(leafletMarker, from, to, markerData) {
+      const markerId = markerData.place_id;
+      if (this.animationFrames[markerId]) {
+        cancelAnimationFrame(this.animationFrames[markerId]);
+      }
+
+      const duration = 800;
+      const startTime = performance.now();
+      const fromLat = from.lat;
+      const fromLng = from.lng;
+      const toLat = to[0];
+      const toLng = to[1];
+
+      const easeInOutCubic = (t) => {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      };
+
+      const step = (timestamp) => {
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easedProgress = easeInOutCubic(progress);
+
+        const currentLat = fromLat + (toLat - fromLat) * easedProgress;
+        const currentLng = fromLng + (toLng - fromLng) * easedProgress;
+
+        leafletMarker.setLatLng([currentLat, currentLng]);
+
+        if (markerData.heading !== undefined) {
+          const angle = this.calculateHeading(fromLat, fromLng, toLat, toLng);
+          const iconElement = leafletMarker.getElement();
+          if (iconElement) {
+            iconElement.style.transform += ` rotate(${angle}deg)`;
+          }
+        }
+
+        if (progress < 1) {
+          this.animationFrames[markerId] = requestAnimationFrame(step);
+        } else {
+          if (markerData.infoText) {
+            leafletMarker.setPopupContent(markerData.infoText);
+          }
+          delete this.animationFrames[markerId];
+        }
+      };
+
+      this.animationFrames[markerId] = requestAnimationFrame(step);
+    },
+
+    calculateHeading(fromLat, fromLng, toLat, toLng) {
+      const dLng = (toLng - fromLng) * Math.PI / 180;
+      const lat1 = fromLat * Math.PI / 180;
+      const lat2 = toLat * Math.PI / 180;
+      const y = Math.sin(dLng) * Math.cos(lat2);
+      const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+      let heading = Math.atan2(y, x) * 180 / Math.PI;
+      heading = (heading + 360) % 360;
+      return heading;
+    },
+
     renderPolylines() {
       if (!this.map || !this.polylineLayer) return;
 

@@ -69,16 +69,15 @@
             </div>
           </div>
           <div class="col-md-8" id="map">
-            <GoogleMapLoader
+            <LeafletMapLoader
               :enabled="false"
               :center="center"
               :selected="selectedItem"
               :zoom="zoom"
-              :apiKey="apiKey"
               :markers="markers"
               :polylines="polyline"
             >
-            </GoogleMapLoader>
+            </LeafletMapLoader>
           </div>
         </div>
       </v-card-text>
@@ -88,20 +87,19 @@
   </div>
 </template>
 <script>
-import GoogleMapLoader from "../../../components/GoogleMapLoader.vue";
+import LeafletMapLoader from "../../../components/LeafletMapLoader.vue";
 
 import VueElementLoading from "vue-element-loading";
 
 export default {
   components: {
-    GoogleMapLoader,
+    LeafletMapLoader,
     VueElementLoading,
   },
   props: {
     trip: Object,
     timestep: Number,
     mode: Number,
-    apiKey: String,
   },
   data() {
     return {
@@ -337,10 +335,6 @@ export default {
 
 .list-group-item i {
   cursor: pointer;
-}
-
-.gm-style .gm-style-iw-d {
-  color: #0d508b !important;
 }
 
 </style>

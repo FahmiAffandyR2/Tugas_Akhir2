@@ -17,12 +17,23 @@
         </template>
 
         <template v-slot:item.status_id="{ item }">
-          <v-chip
-            :color="getStatusColor(item.status_id)"
-            dark
-          >
-            {{ getStatusValue(item.status_id) }}
-          </v-chip>
+          <div>
+            <v-chip
+              :color="getStatusColor(item.status_id)"
+              dark
+              small
+            >
+              {{ getStatusValue(item.status_id) }}
+            </v-chip>
+            <div v-if="item.status_id == 3 && item.suspended_until" class="mt-1" style="font-size:11px;">
+              <span class="warning--text">
+                <v-icon x-small color="warning">mdi-clock-alert</v-icon>
+                Sampai {{ formatSuspendedUntil(item.suspended_until) }}
+              </span>
+              <br v-if="item.suspension_reason" />
+              <small v-if="item.suspension_reason" class="grey--text">Alasan: {{ item.suspension_reason }}</small>
+            </div>
+          </div>
         </template>
     
         <template v-if="userType === 'drivers'" v-slot:item.bus="{ item }">
@@ -155,6 +166,10 @@ export default {
     getBusAssignmentColor(bus)
     {
       return bus != null? 'info': 'error';
+    },
+    formatSuspendedUntil(date) {
+      if (!date) return '-';
+      return new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     },
   },
 };

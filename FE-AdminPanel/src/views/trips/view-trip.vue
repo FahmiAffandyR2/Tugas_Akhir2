@@ -15,7 +15,7 @@
               :mode="3"
             ></step-1>
             <step-2
-            :apiKey="apiKey" :mode="3" :trip="trip" :timestep="timestep"></step-2>
+            :mode="3" :trip="trip" :timestep="timestep"></step-2>
 
       </v-card-text>
     </v-card>
@@ -25,17 +25,14 @@
 <script>
 import step1 from "./steps/step1.vue";
 import step2 from "./steps/step2.vue";
-import {Keys} from '/src/config.js'
 export default {
   components: {
     step1,
     step2,
-    Keys
   },
 
   data() {
     return {
-      apiKey: Keys.GOOGLE_MAPS_API_KEY,
       step: 1,
       timestep: 5,
       step_valid: [true, true, true],

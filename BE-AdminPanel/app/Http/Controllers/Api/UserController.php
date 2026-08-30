@@ -89,15 +89,26 @@ class UserController extends Controller
 
     public function suspendActivate(Request $request)
     {
-        //validate the request
         $this->validate($request, [
             'user_id' => 'required|integer',
+            'reason' => 'nullable|string|max:500',
         ], [], []);
 
         $user_id = $request->user_id;
-
         $user = $this->userRepository->findById($user_id);
-        $user->status_id = $user->status_id != 1 ? 1 : 3;
+
+        if ($user->status_id == 1) {
+            // Suspending
+            $user->status_id = 3;
+            $user->suspended_until = now()->addDays(3);
+            $user->suspension_reason = $request->reason;
+        } else {
+            // Reactivating
+            $user->status_id = 1;
+            $user->suspended_until = null;
+            $user->suspension_reason = null;
+        }
+
         $this->userRepository->update($user_id, $user->toArray());
         return response()->json(['success' => ['user updated successfully']]);
     }

@@ -72,6 +72,25 @@
               Login
             </v-btn>
 
+            <template v-if="canUseGoogleLogin">
+              <div class="divider-row my-5">
+                <span>atau</span>
+              </div>
+
+              <v-btn
+                block
+                large
+                outlined
+                color="primary"
+                class="login-btn google-login-btn"
+                :loading="googleLoading"
+                @click="loginWithGoogle"
+              >
+                <v-icon left>mdi-google</v-icon>
+                Masuk dengan Google
+              </v-btn>
+            </template>
+
             <div class="text-center mt-5">
               Belum memiliki akun customer?
               <router-link to="/customer/register" class="font-weight-bold">Daftar customer</router-link>
@@ -115,6 +134,8 @@ export default {
       valid: true,
       loginError: null,
       submiting: false,
+      googleLoading: false,
+      canUseGoogleLogin: AuthService.canUseGoogleLogin(),
       emailRules: [
         v => !!v || 'E-mail is required',
         v => /.+@.+\..+/.test(v) || 'E-mail must be valid',
@@ -123,6 +144,18 @@ export default {
     };
   },
   methods: {
+    redirectAfterLogin() {
+      const role = Number(localStorage.getItem('internalRole') || localStorage.getItem('customerRole') || localStorage.getItem('userRole'))
+      const destination = role === 1
+        ? '/customer/beranda'
+        : role === 2
+          ? '/driver/beranda'
+          : (this.$router.currentRoute.query.to || '/dashboard')
+
+      this.$router.push(destination).catch(error => {
+        if (error && error.name !== 'NavigationDuplicated') throw error
+      })
+    },
     validate() {
       return this.$refs.form.validate();
     },
@@ -140,22 +173,30 @@ export default {
         const isLoggedIn = await AuthService.login(payload);
         this.submiting = false;
         if (isLoggedIn === true) {
-          const role = Number(localStorage.getItem('internalRole') || localStorage.getItem('customerRole') || localStorage.getItem('userRole'))
-          const destination = role === 1
-            ? '/customer/beranda'
-            : role === 2
-              ? '/driver/beranda'
-              : (this.$router.currentRoute.query.to || '/dashboard')
-
-          this.$router.push(destination).catch(error => {
-            if (error && error.name !== 'NavigationDuplicated') throw error
-          })
+          this.redirectAfterLogin()
         } else if (isLoggedIn && isLoggedIn.message) {
           this.loginError = isLoggedIn.message
         }
       } catch (error) {
         console.log(error);
         this.submiting = false;
+      }
+    },
+    async loginWithGoogle() {
+      this.loginError = null
+      this.googleLoading = true
+      const result = await AuthService.loginWithGoogle({
+        notify: this.$notify,
+        portal: 'all',
+      })
+      this.googleLoading = false
+
+      if (result === 'redirecting') return
+
+      if (result === true) {
+        this.redirectAfterLogin()
+      } else if (result && result.message) {
+        this.loginError = result.message
       }
     },
   },
@@ -222,6 +263,29 @@ export default {
 .login-btn {
   border-radius: 11px;
   text-transform: none;
+}
+
+.divider-row {
+  display: flex;
+  align-items: center;
+  color: #7b8090;
+  font-size: 13px;
+}
+
+.divider-row::before,
+.divider-row::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #dfe3eb;
+}
+
+.divider-row span {
+  padding: 0 14px;
+}
+
+.google-login-btn {
+  background: #fff;
 }
 
 @media (max-width: 960px) {
