@@ -208,7 +208,7 @@ export default {
             type: "error",
           });
           console.log(error);
-          auth.checkError(error.response.data.message, this.$router, this.$swal);
+          auth.checkError(error, this.$router, this.$swal);
         })
         .then(() => {
           this.isLoading = false;

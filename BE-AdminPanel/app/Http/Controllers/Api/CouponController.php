@@ -33,7 +33,7 @@ class CouponController extends Controller
     {
         $this->couponRepository = $couponRepository;
         $this->notificationRepository = $notificationRepository;
-        $this->usersRepository = $userRepository;
+        $this->userRepository = $userRepository;
         $this->couponCustomerRepository = $couponCustomerRepository;
         $this->tripSearchResultRepository = $tripSearchResultRepository;
     }
@@ -69,8 +69,8 @@ class CouponController extends Controller
         }
 
         //check if the coupon is already exists
-        $coupon = $this->couponRepository->findByWhere(['code' => $request->coupon['code']])->first();
-        if($coupon != null)
+        $existingCoupon = $this->couponRepository->findByWhere(['code' => $request->coupon['code']])->first();
+        if($existingCoupon != null && (!$update || $existingCoupon->id != $coupon_id))
         {
             return response()->json(['message' => 'coupon already exists'], 400);
         }
@@ -113,8 +113,13 @@ class CouponController extends Controller
             return response()->json(['error' => ['coupon not found']], 404);
         }
 
+        if($coupon->status == 0)
+        {
+            return response()->json(['error' => 'coupon is inactive'], 400);
+        }
+
         //notify the users
-        $customers = $this->usersRepository->all();
+        $customers = $this->userRepository->allWhere(['*'], [], [['role', '=', 1]], false);
         $customerIds = $customers->pluck('id')->toArray();
         $tokens = $customers->pluck('fcm_token')->toArray();
         //save the notification for all customers
@@ -128,8 +133,12 @@ class CouponController extends Controller
             ]);
             $notificationId = $newNotification->id;
             $token = $tokens[$i];
-            $this->sendSingleNotification($token, $request->message, $notificationId);
+            if ($token) {
+                $this->sendSingleNotification($token, $request->message, $notificationId);
+            }
         }
+
+        return response()->json(['success' => ['Notifications sent successfully']]);
     }
 
     public function sendSingleNotification($deviceToken, $message_content, $notificationId)
@@ -197,7 +206,7 @@ class CouponController extends Controller
         }
 
         //check if the coupon is valid
-        if($coupon->status == 1)
+        if($coupon->status == 0)
         {
             return response()->json(['error' => 'coupon is inactive'], 400);
         }

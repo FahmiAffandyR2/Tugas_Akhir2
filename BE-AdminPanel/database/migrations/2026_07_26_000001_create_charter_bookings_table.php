@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('origin');
             $table->string('destination');
             $table->date('departure_date');
-            $table->unsignedInteger('passenger_count');
+            $table->unsignedSmallInteger('passenger_count');
             $table->string('bus_type', 30);
             $table->text('notes')->nullable();
             $table->decimal('quoted_price', 15, 2)->nullable();

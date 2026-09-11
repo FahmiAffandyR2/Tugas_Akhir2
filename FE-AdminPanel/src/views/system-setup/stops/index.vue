@@ -35,13 +35,10 @@
         </template>
 
         <template v-slot:item.routes="{ item }">
-          <a v-if="item.routes.length" @click.stop="displayRoutes(stops.indexOf(item))">{{ item.routes.length }}</a>
-          <span v-else>No routes</span>
-        </template>
-
-        <template v-slot:item.ticket_price="{ item }">
-          <span v-if="item.ticket_price">Rp {{ Number(item.ticket_price).toLocaleString('id-ID') }}</span>
-          <span v-else class="grey--text">-</span>
+          <v-chip v-if="item.routes.length" small color="primary" @click.stop="displayRoutes(stops.indexOf(item))">
+            {{ item.routes.length }} rute
+          </v-chip>
+          <span v-else class="grey--text">Belum ada rute</span>
         </template>
 
         <template v-slot:item.created_at="{ item }">
@@ -112,7 +109,6 @@ export default {
         { text: "Name", value: "name" },
         { text: "Kategori", value: "category" },
         { text: "Address", value: "address", width: 250 },
-        { text: "Harga Tiket", value: "ticket_price", sortable: false },
         { text: "Routes", value: "routes" },
         { text: "Created", value: "created_at" },
         { text: "Actions", value: "actions", sortable: false },
@@ -180,7 +176,7 @@ export default {
         .catch((error) => {
           this.$notify({ title: "Error", text: "Error while retrieving stops", type: "error" });
           console.log(error);
-          this.$swal("Error", error.response.data.message, "error");
+          this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
         })
         .then(() => {
           this.isLoading = false;
@@ -227,7 +223,7 @@ export default {
         })
         .catch((error) => {
           this.$notify({ title: "Error", text: "Error while deleting stops", type: "error" });
-          this.$swal("Error", error.response.data.message, "error");
+          this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
         });
     },
   },

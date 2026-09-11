@@ -31,7 +31,6 @@ function storeToken(token, portal) {
   // Laravel Sanctum expects the complete "id|plain-text-token" value.
   // Removing the id makes the first authenticated request fail.
   localStorage.setItem(tokenKey(portal), token)
-  axios.defaults.headers.common.Authorization = `Bearer ${token}`
 }
 
 function storeRole(user, portal) {
@@ -54,8 +53,8 @@ function clearAllSessions() {
 
 export default {
   async login2(payload) {
-    await authClient.get("/sanctum/csrf-cookie");
-    return authClient.post("/login", payload);
+    await axios.get("/sanctum/csrf-cookie");
+    return axios.post("/login", payload);
   },
   canUseGoogleLogin() {
     return canUseGoogleAuth
@@ -120,8 +119,8 @@ export default {
       const role = Number(response.data.user_data && response.data.user_data.role)
       const actualPortal = portal === 'all' ? portalForRole(role) : portal
       const allowed = portal === 'all'
-        ? [0, 1, 2].includes(role)
-        : (portal === 'customer' ? role === 1 : (role === 0 || role === 2))
+        ? [0, 1, 2, 3].includes(role)
+        : (portal === 'customer' ? role === 1 : (role === 0 || role === 2 || role === 3))
       if (!allowed)
       {
         const error = Error(
@@ -209,8 +208,8 @@ export default {
       const role = Number(response.data.user_data && response.data.user_data.role)
       const actualPortal = portal === 'all' ? portalForRole(role) : portal
       const allowed = portal === 'all'
-        ? [0, 1, 2].includes(role)
-        : (portal === 'customer' ? role === 1 : (role === 0 || role === 2))
+        ? [0, 1, 2, 3].includes(role)
+        : (portal === 'customer' ? role === 1 : (role === 0 || role === 2 || role === 3))
 
       if (!allowed) {
         const error = Error(
@@ -258,7 +257,7 @@ export default {
     Router.push('/login').catch(() => {})
   },
   logout2() {
-    return authClient.post("/logout");
+    return axios.post("/logout");
   },
   async forgotPassword(payload) {
     return axios.post('/auth/forgot-password', {
@@ -286,19 +285,19 @@ export default {
     return axios.post('/auth/register-customer', payload)
   },
   updatePassword(payload) {
-    return authClient.put("/user/password", payload);
+    return axios.put("/user/password", payload);
   },
   async registerUser(payload) {
-    await authClient.get("/sanctum/csrf-cookie");
-    return authClient.post("/register", payload);
+    await axios.get("/sanctum/csrf-cookie");
+    return axios.post("/register", payload);
   },
   sendVerification(payload) {
-    return authClient.post("/email/verification-notification", payload);
+    return axios.post("/email/verification-notification", payload);
   },
   updateUser(payload) {
-    return authClient.put("/user/profile-information", payload);
+    return axios.put("/user/profile-information", payload);
   },
-  checkError(error, router, swal) {
+  checkError(error, router, swal, portal = 'internal') {
     const status = error && error.response ? error.response.status : null;
     const responseMessage = error && error.response && error.response.data
       ? error.response.data.message
@@ -314,7 +313,7 @@ export default {
     });
 
     if (status === 401 || message.includes('Unauthenticated')) {
-      this.logout();
+      this.logout(portal);
       if (router.currentRoute.name !== 'login') {
         router.push({ name: 'login' }).catch(() => {});
       }

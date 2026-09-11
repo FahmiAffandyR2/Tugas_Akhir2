@@ -9,7 +9,7 @@ class PlannedTrip extends Model
 {
     use HasFactory;
 
-    protected $guarded = ['id', 'created_at', 'updated_at', 'deleted_at'];
+    protected $guarded = ['id', 'created_at', 'updated_at'];
 
 
     //trip
@@ -45,7 +45,7 @@ class PlannedTrip extends Model
     //reservations
     public function reservations()
     {
-        return $this->hasMany(Reservation::class);
+        return $this->hasMany(Reservation::class, 'planned_trip_id');
     }
 
     public function charterBooking()

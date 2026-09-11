@@ -55,7 +55,7 @@
         <v-card-text style="max-height:60vh">
           <vue-element-loading :active="docLoading" />
           <v-alert v-if="docError" type="error" dense text>{{ docError }}</v-alert>
-          <div v-else v-html="docContent"></div>
+          <div v-else v-html="sanitizeHtml(docContent)"></div>
         </v-card-text>
         <v-divider />
         <v-card-actions>
@@ -86,7 +86,10 @@ export default {
   computed: { confirmationRules() { return [v=>!!v||'Konfirmasi password wajib diisi',v=>v===this.form.password||'Konfirmasi password tidak sama'] } },
   methods: {
     async register() {
-      if (!this.$refs.form.validate()) return
+      if (!this.$refs.form.validate()) {
+        this.$notify({ type: 'warning', title: 'Formulir belum lengkap', text: 'Mohon lengkapi semua kolom yang wajib diisi.' })
+        return
+      }
       this.submitting=true; this.serverError=null
       try {
         const response=await AuthService.registerCustomer(this.form)
@@ -114,6 +117,35 @@ export default {
     acceptAndClose() {
       this.accepted = true
       this.docDialog = false
+    },
+    sanitizeHtml(html) {
+      if (!html) return '';
+      const allowed = ['b', 'i', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'a', 'span', 'div', 'table', 'tr', 'td', 'th', 'thead', 'tbody'];
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      const clean = (node) => {
+        const children = [...node.childNodes];
+        children.forEach(child => {
+          if (child.nodeType === 1) {
+            const tag = child.tagName.toLowerCase();
+            if (!allowed.includes(tag)) {
+              child.replaceWith(document.createTextNode(child.textContent));
+              } else {
+                [...child.attributes].forEach(attr => {
+                if (attr.name.startsWith('on') || attr.name === 'style') {
+                  child.removeAttribute(attr.name);
+                }
+                if (attr.name === 'href' && /^(javascript|vbscript|data):/i.test(attr.value)) {
+                  child.removeAttribute(attr.name);
+                }
+              });
+              clean(child);
+            }
+          }
+        });
+      };
+      clean(div);
+      return div.innerHTML;
     },
   },
 }

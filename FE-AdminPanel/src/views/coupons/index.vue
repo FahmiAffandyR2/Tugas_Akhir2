@@ -268,7 +268,7 @@ export default {
             type: 'error'
           });
           console.log(error);
-          auth.checkError(error.response.data.message, this.$router, this.$swal);
+          auth.checkError(error, this.$router, this.$swal);
         })
         .then(() => {
           this.isLoading = false;
@@ -309,7 +309,7 @@ export default {
               type: 'error'
             });
             console.log(error);
-            this.$swal("Error", error.response.data.message, "error");
+            this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
           })
           .then(() => {
             this.isLoading = false;
@@ -366,7 +366,7 @@ export default {
             text: "Error while deleting coupons",
             type: 'error'
           });
-          this.$swal("Error", error.response.data.message, "error");
+          this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
         })
         .then(() => {
           //this.isDeleting = false;
@@ -415,7 +415,7 @@ export default {
                     type: "error",
                 });
                 console.log(error);
-                this.$swal("Error", error.response.data.message, "error");
+                this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
                 });
             }
         });

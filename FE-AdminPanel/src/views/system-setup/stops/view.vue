@@ -111,6 +111,7 @@ export default {
   data() {
     return {
       stop_id: null,
+      loading: false,
       markers: [],
       selectedIdx: null,
       currentPlace: null,
@@ -218,7 +219,7 @@ export default {
         });
     },
     viewDepot(depot) {
-      this.$router.push({ name: "view-route", params: { route_id: depot.id } });
+      this.$router.push({ name: "fleet-depot-detail", params: { depot_id: depot.id } });
     },
   },
 };

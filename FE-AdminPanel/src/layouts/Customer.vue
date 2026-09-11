@@ -25,7 +25,7 @@
       <v-app-bar-nav-icon class="d-md-none" @click="drawer = !drawer" />
       <div class="d-none d-sm-block"><div class="font-weight-bold">Sewa Bus Pariwisata</div><small class="grey--text">Perjalanan nyaman untuk rombongan Anda</small></div>
       <v-spacer />
-      <v-btn icon class="mr-1"><v-icon>mdi-bell-outline</v-icon></v-btn>
+      <v-btn icon class="mr-1" to="/customer/pemesanan"><v-icon>mdi-bell-outline</v-icon></v-btn>
       <v-menu offset-y left>
         <template #activator="{ on, attrs }"><v-btn text rounded v-bind="attrs" v-on="on"><v-avatar color="deep-purple lighten-5" size="34" class="mr-sm-2"><v-icon color="primary">mdi-account</v-icon></v-avatar><span class="d-none d-sm-inline text-capitalize">{{ customerName }}</span><v-icon small>mdi-chevron-down</v-icon></v-btn></template>
         <v-list min-width="190"><v-list-item @click="logout"><v-list-item-icon><v-icon color="error">mdi-logout</v-icon></v-list-item-icon><v-list-item-title>Keluar</v-list-item-title></v-list-item></v-list>
@@ -60,7 +60,7 @@ export default {
   computed: {
     mobileMenus() { return this.menus },
   },
-  async created() { try { const r = await AuthService.getAuthUser(); this.customerName = r.data.data.name } catch (_) {} },
+  async created() { try { const r = await AuthService.getAuthUser(); this.customerName = r.data.data.name } catch (e) { console.warn('Gagal memuat profil:', e.message) } },
   methods: {
     async logout() {
       const confirmed = await this.confirmLogout()

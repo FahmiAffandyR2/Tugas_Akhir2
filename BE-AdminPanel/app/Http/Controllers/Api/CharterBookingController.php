@@ -177,6 +177,97 @@ class CharterBookingController extends Controller
         return response()->json(['bookings' => $query->get()]);
     }
 
+    public function staffIndex(Request $request)
+    {
+        $staff = $request->user();
+        $depotId = $staff->depot_id;
+
+        if (!$depotId) {
+            return response()->json(['bookings' => []]);
+        }
+
+        $query = CharterBooking::with([
+            'customer:id,name,email,tel_number', 'bus.depot', 'busType', 'originArea', 'destinationArea',
+            'assignments.bus.depot', 'assignments.driver:id,name,email,tel_number',
+            'driver:id,name,email,tel_number', 'depot', 'operationalTrip:id,started_at,ended_at,last_position_lat,last_position_lng',
+        ])->latest()
+          ->where(function ($q) use ($depotId) {
+              $q->where('depot_id', $depotId)
+                ->orWhereHas('bus', function ($q2) use ($depotId) {
+                    $q2->where('depot_id', $depotId);
+                })
+                ->orWhereHas('assignments.bus', function ($q3) use ($depotId) {
+                    $q3->where('depot_id', $depotId);
+                });
+          });
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('payment_status')) {
+            $query->where('payment_status', $request->payment_status);
+        }
+
+        return response()->json(['bookings' => $query->get()]);
+    }
+
+    public function staffUpdate(Request $request, CharterBooking $charterBooking)
+    {
+        $staff = $request->user();
+        $depotId = $staff->depot_id;
+
+        if (!$depotId) {
+            abort(403, 'Staff tidak terkait depot.');
+        }
+
+        $bookingDepotId = optional($charterBooking->bus)->depot_id;
+        $assignedDepotIds = $charterBooking->assignments->pluck('bus.depot_id')->filter()->toArray();
+
+        if ($bookingDepotId !== $depotId && !in_array($depotId, $assignedDepotIds)) {
+            abort(403, 'Booking bukan di depot Anda.');
+        }
+
+        return $this->adminUpdate($request, $charterBooking);
+    }
+
+    public function staffDashboard(Request $request)
+    {
+        $staff = $request->user();
+        $depotId = $staff->depot_id;
+
+        if (!$depotId) {
+            return response()->json(['dashboard' => []]);
+        }
+
+        $baseQuery = CharterBooking::where(function ($q) use ($depotId) {
+            $q->where('depot_id', $depotId)
+              ->orWhereHas('bus', function ($q2) use ($depotId) {
+                  $q2->where('depot_id', $depotId);
+              })
+              ->orWhereHas('assignments.bus', function ($q3) use ($depotId) {
+                  $q3->where('depot_id', $depotId);
+              });
+        });
+
+        $totalBookings = $baseQuery->count();
+        $pendingBookings = (clone $baseQuery)->where('status', 'waiting_quote')->count();
+        $activeBookings = (clone $baseQuery)->where('status', 'approved')->count();
+        $totalBuses = \App\Models\Bus::where('depot_id', $depotId)->where('is_active', true)->count();
+        $availableBuses = (clone \App\Models\Bus::where('depot_id', $depotId))->where('is_active', true)->where('status', 'available')->count();
+        $totalDrivers = \App\Models\User::where('depot_id', $depotId)->where('role', 2)->where('status_id', 1)->count();
+
+        return response()->json([
+            'dashboard' => [
+                'total_bookings' => $totalBookings,
+                'pending_bookings' => $pendingBookings,
+                'active_bookings' => $activeBookings,
+                'total_buses' => $totalBuses,
+                'available_buses' => $availableBuses,
+                'total_drivers' => $totalDrivers,
+            ]
+        ]);
+    }
+
     public function adminUpdate(Request $request, CharterBooking $charterBooking)
     {
         $validated = $request->validate([
@@ -743,7 +834,7 @@ class CharterBookingController extends Controller
         $booking->refresh();
         if ($booking->payment_status !== 'paid' || !$booking->departure_time || !$booking->return_date || !$booking->return_time) return;
 
-        // Collect all assignments: main bus + additional assignments
+        \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
         $allAssignments = [];
 
         if ($booking->bus_id && $booking->driver_id) {
@@ -771,7 +862,7 @@ class CharterBookingController extends Controller
 
         // Check if already synced
         if ($booking->operational_planned_trip_id) {
-            $existingTrips = \App\Models\PlannedTrip::where('route_id', $booking->operationalTrip->route_id ?? 0)->get();
+            $existingTrips = \App\Models\PlannedTrip::where('route_id', optional($booking->operationalTrip)->route_id ?? 0)->get();
             if ($existingTrips->count() === count($allAssignments)) {
                 foreach ($existingTrips as $pt) {
                     if (!$pt->started_at) {
@@ -811,9 +902,10 @@ class CharterBookingController extends Controller
             }
         }
 
-        if ($firstPlannedId) {
-            $booking->update(['operational_planned_trip_id' => $firstPlannedId]);
-        }
+            if ($firstPlannedId) {
+                $booking->update(['operational_planned_trip_id' => $firstPlannedId]);
+            }
+        });
     }
 
     private function freshBooking(CharterBooking $booking): CharterBooking
@@ -833,6 +925,18 @@ class CharterBookingController extends Controller
 
         if (!empty($busIds)) {
             Bus::whereIn('id', $busIds)->update(['status' => 'available']);
+        }
+
+        $driverIds = [];
+        if ($booking->driver_id) {
+            $driverIds[] = $booking->driver_id;
+        }
+        $assignmentDriverIds = $booking->assignments->pluck('driver_id')->toArray();
+        $driverIds = array_merge($driverIds, $assignmentDriverIds);
+        $driverIds = array_unique($driverIds);
+
+        if (!empty($driverIds)) {
+            \App\Models\User::whereIn('id', $driverIds)->update(['status' => 'available']);
         }
     }
 

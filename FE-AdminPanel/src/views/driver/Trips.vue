@@ -5,6 +5,43 @@
       <v-icon small class="mr-1">mdi-cloud-upload-outline</v-icon>
       {{ queueCount }} lokasi GPS menunggu pengiriman saat online kembali.
     </v-alert>
+
+    <v-dialog v-model="gpsCheckDialog" max-width="420" persistent>
+      <v-card class="gps-check-card">
+        <v-card-title class="d-flex align-center pa-5">
+          <v-avatar color="primary" size="42" class="mr-3"><v-icon dark>mdi-crosshairs-gps</v-icon></v-avatar>
+          <div><div class="text-h6 font-weight-bold">Cek GPS</div><div class="caption grey--text">Pastikan GPS siap sebelum perjalanan</div></div>
+        </v-card-title>
+        <v-divider />
+        <v-card-text class="pa-5">
+          <div v-for="(step, i) in gpsCheckSteps" :key="i" class="d-flex align-start mb-4">
+            <v-avatar :color="step.status === 'done' ? 'success' : step.status === 'active' ? 'primary' : 'grey lighten-2'" size="28" class="mr-3 mt-1 flex-shrink-0">
+              <v-icon v-if="step.status === 'done'" x-small dark>mdi-check</v-icon>
+              <v-icon v-else-if="step.status === 'error'" x-small dark color="error">mdi-close</v-icon>
+              <span v-else class="caption font-weight-bold white--text">{{ i + 1 }}</span>
+            </v-avatar>
+            <div class="flex-grow-1">
+              <div class="font-weight-medium" :class="{ 'success--text': step.status === 'done', 'error--text': step.status === 'error' }">{{ step.title }}</div>
+              <div class="caption grey--text mt-1">{{ step.description }}</div>
+              <v-alert v-if="step.status === 'error' && step.help" type="warning" dense text class="mt-2 mb-0 caption">
+                {{ step.help }}
+              </v-alert>
+            </div>
+          </div>
+        </v-card-text>
+        <v-divider />
+        <v-card-actions class="pa-4">
+          <v-spacer />
+          <v-btn text @click="cancelGpsCheck" :disabled="gpsChecking">Batal</v-btn>
+          <v-btn v-if="gpsCheckFailed" color="primary" @click="retryGpsCheck" :loading="gpsChecking">
+            <v-icon left small>mdi-refresh</v-icon>Coba Lagi
+          </v-btn>
+          <v-btn v-else color="success" :disabled="!gpsCheckPassed || gpsChecking" :loading="gpsChecking" @click="confirmGpsCheck">
+            <v-icon left small>mdi-check-circle</v-icon>Mulai Perjalanan
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <div class="page-heading d-flex align-center mb-6">
       <div><h1 class="text-h5 font-weight-bold mb-1">{{ pageTitle }}</h1><p class="grey--text mb-0">{{ pageSubtitle }}</p></div>
       <v-spacer/><v-chip color="primary" outlined><v-icon left small>mdi-bus-clock</v-icon>{{ filteredTrips.length }} perjalanan</v-chip>
@@ -93,6 +130,16 @@ export default {
     lastRouteRequestKey: null,
     removePositionListener: null,
     removeStatusListener: null,
+    gpsCheckDialog: false,
+    gpsChecking: false,
+    gpsCheckSteps: [
+      { title: 'Browser mendukung GPS', description: 'Memeriksa perangkat...', status: 'pending', help: '' },
+      { title: 'Izin lokasi diberikan', description: 'Menunggu izin dari browser...', status: 'pending', help: 'Klik "Izinkan" saat browser meminta akses lokasi.' },
+      { title: 'GPS perangkat aktif', description: 'Memverifikasi akurasi GPS...', status: 'pending', help: 'Aktifkan GPS di pengaturan HP Anda (Settings → Location → On).' },
+    ],
+    gpsCheckPassed: false,
+    gpsCheckFailed: false,
+    pendingTrip: null,
   }),
   computed: {
     filter() { return this.$route.meta.tripFilter },
@@ -283,6 +330,118 @@ export default {
         this.gpsMessage = { type: 'error', text: 'Perangkat ini tidak mendukung GPS.' }
         return
       }
+      this.pendingTrip = trip
+      this.openGpsCheck()
+    },
+    openGpsCheck() {
+      this.gpsCheckSteps = [
+        { title: 'Browser mendukung GPS', description: 'Memeriksa perangkat...', status: 'active', help: '' },
+        { title: 'Izin lokasi diberikan', description: 'Menunggu izin dari browser...', status: 'pending', help: 'Klik "Izinkan" saat browser meminta akses lokasi.' },
+        { title: 'GPS perangkat aktif', description: 'Memverifikasi akurasi GPS...', status: 'pending', help: 'Aktifkan GPS di pengaturan HP Anda (Settings → Location → On).' },
+      ]
+      this.gpsCheckPassed = false
+      this.gpsCheckFailed = false
+      this.gpsCheckDialog = true
+      this.runGpsCheck()
+    },
+    async runGpsCheck() {
+      this.gpsChecking = true
+      this.gpsCheckFailed = false
+
+      this.gpsCheckSteps[0].status = 'active'
+      this.gpsCheckSteps[0].description = 'Memeriksa perangkat...'
+
+      await this.sleep(400)
+      if (!navigator.geolocation) {
+        this.gpsCheckSteps[0].status = 'error'
+        this.gpsCheckSteps[0].description = 'Perangkat tidak mendukung GPS'
+        this.gpsCheckSteps[0].help = 'Gunakan perangkat dengan GPS (HP Android/iOS).'
+        this.gpsChecking = false
+        this.gpsCheckFailed = true
+        return
+      }
+      this.gpsCheckSteps[0].status = 'done'
+      this.gpsCheckSteps[0].description = 'Browser mendukung GPS'
+
+      this.gpsCheckSteps[1].status = 'active'
+      this.gpsCheckSteps[1].description = 'Meminta izin lokasi...'
+
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0,
+          })
+        })
+
+        this.gpsCheckSteps[1].status = 'done'
+        this.gpsCheckSteps[1].description = 'Izin lokasi diberikan'
+
+        this.gpsCheckSteps[2].status = 'active'
+        this.gpsCheckSteps[2].description = 'Memverifikasi akurasi GPS...'
+        await this.sleep(300)
+
+        const accuracy = position.coords.accuracy
+        if (accuracy > 100) {
+          this.gpsCheckSteps[2].status = 'error'
+          this.gpsCheckSteps[2].description = `Akurasi GPS rendah (${Math.round(accuracy)}m)`
+          this.gpsCheckSteps[2].help = 'Aktifkan GPS di pengaturan HP untuk akurasi lebih baik (Settings → Location → High Accuracy).'
+          this.gpsChecking = false
+          this.gpsCheckFailed = true
+          return
+        }
+
+        this.gpsCheckSteps[2].status = 'done'
+        this.gpsCheckSteps[2].description = `GPS aktif (akurasi: ${Math.round(accuracy)}m)`
+        this.gpsCheckPassed = true
+        this.gpsChecking = false
+
+      } catch (error) {
+        let stepIdx = 1
+        let errorMsg = ''
+        let helpMsg = ''
+
+        if (error.code === 1) {
+          stepIdx = 1
+          errorMsg = 'Izin lokasi ditolak'
+          helpMsg = 'Buka Pengaturan → Aplikasi → Browser → Izin → Lokasi → Izinkan. Lalu muat ulang halaman ini.'
+        } else if (error.code === 2) {
+          stepIdx = 2
+          errorMsg = 'GPS tidak dapat menentukan lokasi'
+          helpMsg = 'Pastikan GPS/Location aktif di pengaturan HP (Settings → Location → On).'
+        } else {
+          stepIdx = 2
+          errorMsg = 'Timeout mendapatkan lokasi'
+          helpMsg = 'Pastikan GPS aktif dan Anda berada di tempat terbuka. Coba lagi.'
+        }
+
+        for (let i = 0; i <= stepIdx; i++) {
+          if (i < stepIdx) {
+            this.gpsCheckSteps[i].status = 'done'
+          } else {
+            this.gpsCheckSteps[i].status = 'error'
+            this.gpsCheckSteps[i].description = errorMsg
+            this.gpsCheckSteps[i].help = helpMsg
+          }
+        }
+        this.gpsChecking = false
+        this.gpsCheckFailed = true
+      }
+    },
+    retryGpsCheck() {
+      this.runGpsCheck()
+    },
+    cancelGpsCheck() {
+      this.gpsCheckDialog = false
+      this.pendingTrip = null
+    },
+    async confirmGpsCheck() {
+      this.gpsCheckDialog = false
+      const trip = this.pendingTrip
+      this.pendingTrip = null
+      if (!trip) return
+
       this.actionId = trip.id
       try {
         await axios.post('/planned-trips/start-stop', { planned_trip_id: trip.id, mode: 1 })
@@ -292,6 +451,7 @@ export default {
       } catch (e) { this.notifyError(e, 'Perjalanan gagal dimulai.') }
       finally { this.actionId = null }
     },
+    sleep(ms) { return new Promise(r => setTimeout(r, ms)) },
     async completeTrip(trip) {
       const confirmation = await this.$swal.fire({ title: 'Selesaikan perjalanan?', text: 'Pengiriman lokasi GPS akan dihentikan.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Ya, selesai', cancelButtonText: 'Batal' })
       if (!confirmation.isConfirmed) return
@@ -381,5 +541,6 @@ export default {
 <style scoped>
 .trip-card,.empty-state { height:100%; border-radius:16px; border:1px solid rgba(58,53,65,.08); }.card-accent{height:5px}.card-accent.scheduled{background:linear-gradient(90deg,#9155fd,#b47cff)}.card-accent.active{background:linear-gradient(90deg,#ff9800,#ffc107)}.card-accent.completed{background:linear-gradient(90deg,#4caf50,#8bd28e)}.route-symbol{width:42px;height:42px;border-radius:12px;background:#f2eaff;display:flex;align-items:center;justify-content:center}.route-title{font-size:1.05rem}.info-row{display:flex;align-items:center;color:#6e6b78}.gps-banner{background:#eaf7eb;color:#2e7d32;border-radius:10px;display:flex;align-items:center}.gps-pulse{width:9px;height:9px;border-radius:50%;background:#4caf50;box-shadow:0 0 0 5px rgba(76,175,80,.14)}.action-btn{border-radius:10px;text-transform:none}.empty-icon{width:125px;height:100px;border-radius:50%;background:#f2eaff;display:flex;align-items:center;justify-content:center}.empty-copy{max-width:480px}.page-heading{min-height:58px}@media(max-width:600px){.page-heading{align-items:flex-start!important}.page-heading .v-chip{display:none}.route-title{max-width:160px;white-space:normal}}
 .navigation-card{border-radius:18px!important;border:1px solid rgba(58,53,65,.08)}.navigation-header{border-bottom:1px solid rgba(58,53,65,.08)}.navigation-metrics .metric+ .metric{border-left:1px solid rgba(58,53,65,.1)}.map-column{position:relative;background:#eee}.map-column ::v-deep .leaflet-map{height:430px}.map-waiting{position:absolute;z-index:900;left:16px;bottom:16px;background:#fff;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.14)}.stops-column{max-height:430px;overflow-y:auto}.next-stop-card{border-radius:12px;background:#f0fdf4;border:1px solid rgba(34,197,94,.2)}.stop-track{width:18px;display:flex;flex-direction:column;align-items:center}.stop-dot{display:block;flex:none;width:14px;height:14px;border:3px solid #fff;border-radius:50%;background:#7c3aed;box-shadow:0 0 0 2px #7c3aed}.stop-dot.destination{background:#ef4444;box-shadow:0 0 0 2px #ef4444}.stop-line{width:2px;flex:1;min-height:32px;background:#ddd5ed;margin-top:4px}.stop-address{color:#777;word-break:break-word}
+.gps-check-card{border-radius:16px!important}
 @media(max-width:600px){.navigation-header{align-items:flex-start!important}.navigation-metrics{width:100%}.navigation-metrics .metric:first-child{padding-left:0!important}.map-column ::v-deep .leaflet-map{height:330px}.stops-column{max-height:none}}
 </style>

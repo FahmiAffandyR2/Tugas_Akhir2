@@ -192,11 +192,7 @@ class TripController extends Controller
             return $status->id;
         }
 
-        return DB::table('statuses')->insertGetId([
-            'name' => 'completed',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        return null;
     }
 
     public function getTrip($trip_id)
@@ -693,6 +689,10 @@ class TripController extends Controller
         else{
             return response()->json(['error' => ['Invalid date']], 422);
         }
+        $startLat = null;
+        $startLng = null;
+        $endLat = null;
+        $endLng = null;
         if($request->exists('start_lat')){
             $startLat = floatval($request['start_lat']);
         }
@@ -712,10 +712,10 @@ class TripController extends Controller
 
         //Get the close start stops to the start point and have route inner join with route_stops table
         $closeStartStops = Stop::select("*", DB::raw("
-        ST_Distance_Sphere( point({$startLng}, {$startLat}),
+        ST_Distance_Sphere( point(?, ?),
                               point(lng, lat)) * .001
           as `distance`
-          "))->having("distance", "<", $range)->get();
+          ", [$startLng, $startLat]))->having("distance", "<", $range)->get();
         //remove stops that are not in the route stops table
         $closeStartStops = $closeStartStops->filter(function ($stop) {
             return count(RouteStop::where("stop_id", "=", $stop->id)->get()) > 0;
@@ -1037,7 +1037,7 @@ class TripController extends Controller
                 $distance += $this->distance($path[$index - 1]->lat, $path[$index - 1]->lng, $point->lat, $point->lng);
             }
         }
-        $currentSettings = Setting::where("id", 1)->first();
+        $currentSettings = Setting::first();
         $ratePerKm = $currentSettings->rate_per_km;
         $commission = $currentSettings->commission;
         $orgPrice = $distance * $ratePerKm;
@@ -1111,7 +1111,7 @@ class TripController extends Controller
             return response()->json(["message" => "Unauthorized", "success" => false], 401);
         }
 
-        $currentSettings = Setting::where("id", 1)->first();
+        $currentSettings = Setting::first();
         $commission = $currentSettings->commission;
 
         $payment_method = $request->payment_method;
@@ -1181,13 +1181,15 @@ class TripController extends Controller
 
             if($payment_method == 0) //wallet
             {
-                $user_balance = $user->wallet;
-                if ($user_balance < $priceAfterDiscount) {
+                $decremented = \App\Models\User::where('id', $user_id)
+                    ->where('wallet', '>=', $priceAfterDiscount)
+                    ->decrement('wallet', $priceAfterDiscount);
+
+                if (!$decremented) {
                     return response()->json(["message" => "Insufficient funds", "success" => false], 400);
                 }
 
-                $user->wallet = $user_balance - $priceAfterDiscount;
-                $user->save();
+                $user->wallet -= $priceAfterDiscount;
 
                 // //driver share
                 // $driver_share = $price * (1 - $commission/100.0);
@@ -1369,7 +1371,7 @@ class TripController extends Controller
                         ]);
                         $notificationId = $newNotification->id;
                         $token = $tokens[$i];
-                        $this->sendSingleNotification($token, $request->message, $notificationId);
+                        $this->sendSingleNotification($token, $startTripMessage, $notificationId);
                     }
                 }
             }
@@ -1380,9 +1382,6 @@ class TripController extends Controller
             Log::info($e->getMessage());
             return response()->json(['message' => $e->getMessage()], 422);
         }
-
-
-        return response()->json(["success" => true, "trip" => $planned_trip], 200);
     }
 
 
@@ -1615,18 +1614,18 @@ class TripController extends Controller
             }
 
             if ($planned_trip->driver_id != $driver_id) {
-                return response()->json(["message" => "Unauthorized", "success" => false], 500);
+                return response()->json(["message" => "Unauthorized", "success" => false], 403);
             }
 
             if($reservation->ride_status != 0){
-                return response()->json(["message" => "Passenger already picked up", "success" => false], 500);
+                return response()->json(["message" => "Passenger already picked up", "success" => false], 422);
             }
 
             //check if the passenger is near the stop
             $distance = $this->distance($lat, $lng, $reservation->firstStop->lat, $reservation->firstStop->lng)*1000;
 
             if($distance > $distance_to_stop_to_mark_arrived){
-                return response()->json(["message" => "Passenger is not near the stop", "success" => false], 500);
+                return response()->json(["message" => "Passenger is not near the stop", "success" => false], 422);
             }
 
             $reservation->ride_status = 1;
@@ -1665,7 +1664,7 @@ class TripController extends Controller
                 }
             }
             if($reservation_found == false){
-                return response()->json(["message" => "No passenger found", "success" => false], 500);
+                return response()->json(["message" => "No passenger found", "success" => false], 404);
             }
 
             $this->updatePayment($reservation);

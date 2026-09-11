@@ -41,11 +41,11 @@ class CreateCustomerReservedTripsTable extends Migration
             //planned_start_time
             $table->time('planned_start_time');
 
-            $table->double('trip_price');
-            $table->double('paid_price')->default(0.0);
+            $table->decimal('trip_price', 15, 2);
+            $table->decimal('paid_price', 15, 2)->default(0.00);
 
-            $table->double('driver_share')->default(0.0);
-            $table->double('admin_share')->default(0.0);
+            $table->decimal('driver_share', 15, 2)->default(0.00);
+            $table->decimal('admin_share', 15, 2)->default(0.00);
 
             //ride status
             $table->unsignedInteger('ride_status')->default(0);

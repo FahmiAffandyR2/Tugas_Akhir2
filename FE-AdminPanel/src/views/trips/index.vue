@@ -225,14 +225,14 @@ export default {
           this.isSubmit = false;
           if(trip.status_id == 1)
           {
-            trip.status_id == 3;
+            trip.status_id = 3;
             this.activeTrips[index].status_id = 3;
             this.activeTrips.splice(index, 1);
             this.trashedTrips.push(trip);
           }
           else
           {
-            trip.status_id == 1;
+            trip.status_id = 1;
             this.trashedTrips[index].status_id = 1;
             this.activeTrips.push(trip);
             this.trashedTrips.splice(index, 1);
@@ -320,7 +320,7 @@ export default {
             type: "error",
           });
           console.log(error);
-          this.$swal("Error", error.response.data.message, "error");
+this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
         })
         .then(() => {
           this.isLoading = false;

@@ -19,7 +19,7 @@ class CreateUserChargesTable extends Migration
             $table->unsignedInteger('user_id');
             $table->foreign('user_id')->references('id')->on('users');
 
-            $table->double('amount');
+            $table->decimal('amount', 15, 2);
             
             $table->date('payment_date');
 
@@ -36,6 +36,6 @@ class CreateUserChargesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('user_payments');
+        Schema::dropIfExists('user_charges');
     }
 }

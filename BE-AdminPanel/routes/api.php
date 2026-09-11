@@ -99,14 +99,14 @@ Route::group(['prefix' => 'routes'], function () {
   Route::delete('/{route}', [Api\RouteController::class, 'destroy'])->middleware(['auth:sanctum', 'admin']);
   Route::get('/all', [Api\RouteController::class, 'index'])->middleware(['auth:sanctum']);
   Route::get('/by-status', [Api\RouteController::class, 'getRoutesByStatus'])->middleware(['auth:sanctum', 'admin']);
-  Route::get('/{id}', [Api\RouteController::class, 'getRoute']);
+  Route::get('/{id}', [Api\RouteController::class, 'getRoute'])->middleware(['auth:sanctum']);
 });
 
 Route::group(['prefix' => 'stops'], function () {
   Route::post('/create-edit', [Api\StopController::class, 'createEdit'])->middleware(['auth:sanctum', 'admin']);
   Route::delete('/{stop}', [Api\StopController::class, 'destroy'])->middleware(['auth:sanctum', 'admin']);
   Route::get('/all', [Api\StopController::class, 'index'])->middleware(['auth:sanctum']);
-  Route::get('/{id}', [Api\StopController::class, 'getStop']);
+  Route::get('/{id}', [Api\StopController::class, 'getStop'])->middleware(['auth:sanctum']);
   Route::get('/{id}/nearby-depots', [Api\StopController::class, 'nearbyDepots'])->middleware(['auth:sanctum', 'admin']);
 });
 
@@ -125,7 +125,7 @@ Route::group(['prefix' => 'trips'], function () {
   Route::get('/suspensions', [Api\TripController::class, 'getTripSuspensions'])->middleware(['auth:sanctum']);
   Route::get('/trip/{id}', [Api\TripController::class, 'getTrip'])->middleware(['auth:sanctum']);
   //Search for trips by location
-  Route::get('/search-by-guest', [Api\TripController::class, 'searchByGuest']);
+  Route::get('/search-by-guest', [Api\TripController::class, 'searchByGuest'])->middleware(['auth:sanctum']);
   Route::get('/search-by-customer', [Api\TripController::class, 'searchByCustomer'])->middleware(['auth:sanctum']);
   //pay
   Route::post('/pay', [Api\TripController::class, 'pay'])->middleware(['auth:sanctum']);
@@ -217,9 +217,9 @@ Route::group(['prefix' => 'drivers'], function() {
   Route::get('/get-driver-trips', [Api\DriverController::class, 'getDriverTrips'])->middleware(['auth:sanctum', 'driver']);
   //wallet payments
   Route::get('/wallet-payments', [Api\DriverController::class, 'getWalletPayments'])->middleware(['auth:sanctum']);
-  Route::get('/available', [Api\DriverController::class, 'getAvailableDrivers']);
+  Route::get('/available', [Api\DriverController::class, 'getAvailableDrivers'])->middleware(['auth:sanctum', 'admin']);
   //load available-buses
-  Route::get('/available-buses', [Api\DriverController::class, 'getAvailableBuses']);
+  Route::get('/available-buses', [Api\DriverController::class, 'getAvailableBuses'])->middleware(['auth:sanctum', 'admin']);
 
   //updatePreferredPaymentMethod
   Route::post('/update-preferred-payment-method', [Api\DriverController::class, 'updatePreferredPaymentMethod'])->middleware(['auth:sanctum']);
@@ -234,9 +234,9 @@ Route::group(['prefix' => 'buses'], function() {
   Route::delete('/{bus}', [Api\BusController::class, 'destroy'])->middleware(['auth:sanctum', 'admin']);
   Route::post('/assign-driver', [Api\BusController::class, 'assignDriver'])->middleware(['auth:sanctum', 'admin']);
   Route::get('/types', [Api\BusController::class, 'busTypes'])->middleware(['auth:sanctum', 'admin']);
-  Route::get('/all', [Api\BusController::class, 'index']);
+  Route::get('/all', [Api\BusController::class, 'index'])->middleware(['auth:sanctum', 'admin']);
   //Route::get('/{id}', [Api\BusController::class, 'getBus']);
-  Route::get('/available-drivers', [Api\BusController::class, 'getAvailableDrivers']);
+  Route::get('/available-drivers', [Api\BusController::class, 'getAvailableDrivers'])->middleware(['auth:sanctum', 'admin']);
 });
 
 Route::group(['prefix' => 'fleet-depots', 'middleware' => ['auth:sanctum', 'admin']], function() {
@@ -268,7 +268,7 @@ Route::group(['prefix' => 'charter-bookings', 'middleware' => ['auth:sanctum']],
   Route::get('/options', [Api\CharterBookingController::class, 'options'])->middleware('customer');
   Route::post('/', [Api\CharterBookingController::class, 'store'])->middleware('customer');
   Route::post('/{charterBooking}/payment', [Api\CharterBookingController::class, 'submitPayment'])->middleware('customer');
-  Route::get('/{charterBooking}/invoice', [Api\CharterBookingController::class, 'invoice']);
+  Route::get('/{charterBooking}/invoice', [Api\CharterBookingController::class, 'invoice'])->middleware('customer');
   Route::post('/{charterBooking}/cancel-rejected-payment', [Api\CharterBookingController::class, 'cancelRejectedPayment'])->middleware('customer');
   Route::post('/{charterBooking}/cancel', [Api\CharterBookingController::class, 'customerCancel'])->middleware('customer');
   Route::get('/admin', [Api\CharterBookingController::class, 'adminIndex'])->middleware('admin');
@@ -328,12 +328,13 @@ Route::group(['prefix' => 'customer-locations', 'middleware' => ['auth:sanctum',
 Route::group(['prefix' => 'customer-tourist', 'middleware' => ['auth:sanctum']], function () {
   Route::get('/stops', [Api\CustomerTouristController::class, 'touristStops']);
   Route::get('/stops/{stopId}', [Api\CustomerTouristController::class, 'touristStopDetail']);
+  Route::get('/stops/{stopId}/prices', [Api\CustomerTouristController::class, 'getBusPrices']);
   Route::get('/depots/{depotId}/routes', [Api\CustomerTouristController::class, 'depotAvailableRoutes']);
 });
 
 // GPS Tracking
 Route::group(['prefix' => 'gps'], function () {
-  Route::post('/device', [Api\GpsTrackingController::class, 'deviceIngest']);
+  Route::post('/device', [Api\GpsTrackingController::class, 'deviceIngest'])->middleware('auth:sanctum');
   Route::post('/phone', [Api\GpsTrackingController::class, 'phoneUpdate'])->middleware(['auth:sanctum', 'driver']);
 });
 
@@ -367,6 +368,26 @@ Route::group(['prefix' => 'driver-shifts', 'middleware' => ['auth:sanctum', 'adm
   Route::put('/{driverShift}', [Api\DriverShiftController::class, 'update']);
   Route::delete('/{driverShift}', [Api\DriverShiftController::class, 'destroy']);
   Route::get('/drivers', [Api\DriverShiftController::class, 'drivers']);
+});
+
+// Staff portal routes (scoped to depot)
+Route::group(['prefix' => 'staff', 'middleware' => ['auth:sanctum', 'staff']], function () {
+  // Staff profile
+  Route::get('/profile', [Api\AuthController::class, 'getAuthUser']);
+
+  // Bookings scoped to staff's depot
+  Route::get('/bookings', [Api\CharterBookingController::class, 'staffIndex']);
+  Route::put('/bookings/{charterBooking}', [Api\CharterBookingController::class, 'staffUpdate']);
+  Route::get('/bookings/{charterBooking}/invoice', [Api\CharterBookingController::class, 'invoice']);
+
+  // Buses scoped to staff's depot
+  Route::get('/buses', [Api\BusController::class, 'staffIndex']);
+
+  // Drivers scoped to staff's depot
+  Route::get('/drivers', [Api\UserController::class, 'staffDrivers']);
+
+  // Dashboard summary for staff's depot
+  Route::get('/dashboard', [Api\CharterBookingController::class, 'staffDashboard']);
 });
 
 //Todo: the following routes should be removed. Please update the frontend to use the new routes

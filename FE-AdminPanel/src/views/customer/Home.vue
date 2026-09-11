@@ -52,8 +52,9 @@ export default {
           waiting: bookings.filter(isWaiting).length,
           completed: bookings.filter(isCompleted).length,
         }
-      } catch (_) {
+      } catch (e) {
         this.bookingStats = { active: 0, waiting: 0, completed: 0 }
+        console.warn('Gagal memuat statistik booking:', e.message)
       }
     },
   },

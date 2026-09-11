@@ -719,7 +719,7 @@ export default {
                         type: "error",
                     });
                     console.log(error);
-                    this.$swal("Error", error.response.data.message, "error");
+this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
                 });
         },
         fetchStops() {

@@ -42,11 +42,19 @@ class ComplaintController extends Controller
         // compute the distance between the user and the driver for each complaint
         foreach ($complaints as $complaint) {
             //compute the distance between the user and the stop
-            $complaint->distanceToStop = $this->distance($complaint->stop_lat, $complaint->stop_lng, $complaint->customer_lat, $complaint->customer_lng);
-            $complaint->distanceToStop = round($complaint->distanceToStop, 2) . ' km';
+            if ($complaint->stop_lat && $complaint->stop_lng && $complaint->customer_lat && $complaint->customer_lng) {
+                $complaint->distanceToStop = $this->distance($complaint->stop_lat, $complaint->stop_lng, $complaint->customer_lat, $complaint->customer_lng);
+                $complaint->distanceToStop = round($complaint->distanceToStop, 2) . ' km';
+            } else {
+                $complaint->distanceToStop = null;
+            }
             //compute the distance between the user and the bus
-            $complaint->distanceToBus = $this->distance($complaint->bus_lat, $complaint->bus_lng, $complaint->customer_lat, $complaint->customer_lng);
-            $complaint->distanceToBus = round($complaint->distanceToBus, 2) . ' km';
+            if ($complaint->bus_lat && $complaint->bus_lng && $complaint->customer_lat && $complaint->customer_lng) {
+                $complaint->distanceToBus = $this->distance($complaint->bus_lat, $complaint->bus_lng, $complaint->customer_lat, $complaint->customer_lng);
+                $complaint->distanceToBus = round($complaint->distanceToBus, 2) . ' km';
+            } else {
+                $complaint->distanceToBus = null;
+            }
             //compute the distance between the user and the driver
             $complaint->action = $complaint->status == 0 ? 'pending' : ($complaint->status == 1 ? 'refund' : 'cancel');
             //get the ticket number

@@ -591,7 +591,7 @@ export default {
           });
           console.log(error);
           this.loadingDrivers = false;
-          this.$swal("Error", error.response.data.message, "error");
+          this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
         })
         .then(() => {
           this.loadingDrivers = false;

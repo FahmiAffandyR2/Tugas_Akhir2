@@ -64,6 +64,6 @@ class CreateTripSearchResultsTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('notes');
+        Schema::dropIfExists('trip_search_results');
     }
 }

@@ -75,6 +75,23 @@ class UserController extends Controller
         return response()->json($allUsers, 200);
     }
 
+    public function staffDrivers(Request $request)
+    {
+        $staff = $request->user();
+        $depotId = $staff->depot_id;
+
+        if (!$depotId) {
+            return response()->json(['drivers' => []]);
+        }
+
+        $drivers = \App\Models\User::with(['bus'])
+            ->where('role', 2)
+            ->where('depot_id', $depotId)
+            ->get();
+
+        return response()->json(['drivers' => $drivers]);
+    }
+
     public function getUser($user_id)
     {
         //get the current currency
@@ -96,6 +113,11 @@ class UserController extends Controller
 
         $user_id = $request->user_id;
         $user = $this->userRepository->findById($user_id);
+
+        // Only allow suspending drivers (role=2) or customers (role=1)
+        if (!in_array($user->role, [1, 2])) {
+            return response()->json(['error' => 'Cannot suspend admin users'], 403);
+        }
 
         if ($user->status_id == 1) {
             // Suspending
@@ -127,13 +149,8 @@ class UserController extends Controller
         // check if image has been received from form
         if ($request->file('avatar')) {
             Log::info('file');
-            $imageName = time().'.'.$request->avatar->getClientOriginalExtension();
-            $storagePath = Storage::url('avatars/'. $user_id);
-            $imageAbsolutePath = public_path('/backend'.$storagePath);
-            $request->avatar->move($imageAbsolutePath, $imageName);
-
-            // Update user's avatar column on 'users' table
-            $user->avatar = $storagePath .'/' . $imageName;
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar = $path;
 
             if ($user->save()) {
                 return response()->json([

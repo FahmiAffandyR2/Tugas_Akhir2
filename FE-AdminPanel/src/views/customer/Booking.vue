@@ -43,12 +43,6 @@
               </template>
 
               <v-col cols="12" md="6">
-                <v-select v-model="form.originAreaId" outlined :items="serviceAreas" item-text="name" item-value="id" label="Area penjemputan" prepend-inner-icon="mdi-map-marker" :rules="required" />
-              </v-col>
-              <v-col cols="12" md="6">
-                <v-text-field v-model.trim="form.origin" outlined label="Detail lokasi penjemputan" placeholder="Contoh: SMK Negeri ..., Jakarta Selatan" :rules="required" />
-              </v-col>
-              <v-col cols="12" md="6">
                 <div class="pickup-map-label mb-2">
                   <v-icon small color="primary" class="mr-1">mdi-map-marker</v-icon>
                   <span class="font-weight-bold">Lokasi penjemputan</span>
@@ -88,10 +82,49 @@
                 </div>
               </v-col>
               <v-col cols="12" md="6">
-                <v-select v-model="form.destinationAreaId" outlined :items="serviceAreas" item-text="name" item-value="id" label="Area tujuan" prepend-inner-icon="mdi-map-marker-check" :rules="required" />
+                <v-text-field v-model.trim="form.origin" outlined label="Detail lokasi penjemputan" placeholder="Contoh: SMP 15 Tangsel, Jl. Puspitek" :rules="required" />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field v-model.trim="form.destination" outlined label="Detail lokasi tujuan" placeholder="Contoh: Taman Mini Indonesia Indah" :rules="required" />
+                <div class="pickup-map-label mb-2">
+                  <v-icon small color="primary" class="mr-1">mdi-map-marker-check</v-icon>
+                  <span class="font-weight-bold">Lokasi tujuan</span>
+                  <span class="grey--text caption ml-2">(klik peta atau cari alamat)</span>
+                </div>
+                <v-text-field
+                  v-model.trim="destSearch"
+                  outlined
+                  dense
+                  hide-details
+                  prepend-inner-icon="mdi-magnify"
+                  placeholder="Cari lokasi tujuan..."
+                  class="mb-2"
+                  @keyup.enter="searchDestAddress"
+                />
+                <div v-if="destSearchResults.length" class="pickup-search-results mb-2">
+                  <div
+                    v-for="(r, i) in destSearchResults"
+                    :key="i"
+                    class="pickup-search-item"
+                    @click="selectDestSearchResult(r)"
+                  >
+                    <v-icon x-small class="mr-2">mdi-map-marker</v-icon>
+                    {{ r.display_name }}
+                  </div>
+                </div>
+                <div class="pickup-map-wrapper">
+                  <div ref="destMap" class="pickup-map"></div>
+                  <v-chip v-if="form.destLat && form.destLng" small color="success" text-color="white" class="pickup-coord-chip">
+                    <v-icon left small>mdi-check-circle</v-icon>
+                    {{ form.destLat.toFixed(5) }}, {{ form.destLng.toFixed(5) }}
+                  </v-chip>
+                  <v-chip v-else small color="grey lighten-1" text-color="white" class="pickup-coord-chip">
+                    <v-icon left small>mdi-map-marker-account</v-icon>
+                    Belum ditandai
+                  </v-chip>
+                </div>
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-text-field v-model.trim="form.destination" outlined label="Detail lokasi tujuan" placeholder="Contoh: Pantai Baron, Gunung Kidul" :rules="required" />
               </v-col>
               <v-col cols="12" md="6">
                 <v-text-field v-model.number="form.passengers" outlined type="number" min="1" label="Jumlah peserta" prepend-inner-icon="mdi-account-group" :rules="passengerRules" />
@@ -140,7 +173,7 @@
           <h2 class="text-h6 font-weight-bold mb-5">Periksa kembali pemesanan</h2>
           <v-card flat class="summary pa-5">
             <v-row>
-              <v-col cols="12" md="6"><div class="summary-label">Rute perjalanan</div><div class="font-weight-bold">{{ originAreaName }} - {{ destinationAreaName }}</div><div>{{ form.origin }} <v-icon small>mdi-arrow-right</v-icon> {{ form.destination }}</div></v-col>
+              <v-col cols="12" md="6"><div class="summary-label">Rute perjalanan</div><div class="font-weight-bold">{{ form.origin }}</div><div><v-icon small>mdi-arrow-right</v-icon> {{ form.destination }}</div></v-col>
               <v-col cols="6" md="3"><div class="summary-label">Berangkat</div><div class="font-weight-bold">{{ formattedDeparture }}</div></v-col>
               <v-col cols="6" md="3"><div class="summary-label">Pulang</div><div class="font-weight-bold">{{ formattedReturn }}</div></v-col>
               <v-col cols="6" md="3"><div class="summary-label">Peserta</div><div class="font-weight-bold">{{ form.passengers }} orang</div></v-col>
@@ -225,6 +258,10 @@ export default {
     pickupMarker: null,
     pickupSearch: '',
     pickupSearchResults: [],
+    destSearch: '',
+    destSearchResults: [],
+    destMap: null,
+    destMarker: null,
     form: {
       tripType: 'one_way',
       originAreaId: null,
@@ -240,19 +277,13 @@ export default {
       busTypeId: null,
       pickupLat: null,
       pickupLng: null,
+      destLat: null,
+      destLng: null,
     },
   }),
   computed: {
     selectedBusType() {
       return this.busTypes.find(bus => bus.id === this.form.busTypeId) || {};
-    },
-    originAreaName() {
-      const area = this.serviceAreas.find(item => item.id === this.form.originAreaId);
-      return area ? area.name : '-';
-    },
-    destinationAreaName() {
-      const area = this.serviceAreas.find(item => item.id === this.form.destinationAreaId);
-      return area ? area.name : '-';
     },
     formattedDeparture() {
       if (!this.form.departureDate) return '-';
@@ -264,8 +295,24 @@ export default {
       return `${this.formatDate(this.form.returnDate)} ${this.form.returnTime || ''}`;
     },
   },
+  watch: {
+    'form.originAreaId'(val) {
+      this.form.destinationAreaId = val;
+    },
+  },
   mounted() {
     this.initPickupMap();
+    this.initDestMap();
+  },
+  beforeDestroy() {
+    if (this.pickupMap) {
+      this.pickupMap.remove();
+      this.pickupMap = null;
+    }
+    if (this.destMap) {
+      this.destMap.remove();
+      this.destMap = null;
+    }
   },
   created() {
     this.loadOptions();
@@ -291,6 +338,7 @@ export default {
           const { lat, lng } = e.latlng;
           this.form.pickupLat = lat;
           this.form.pickupLng = lng;
+          this.detectAreaFromCoords(lat, lng);
 
           if (this.pickupMarker) {
             this.pickupMarker.setLatLng([lat, lng]);
@@ -311,6 +359,47 @@ export default {
         this.$nextTick(() => this.pickupMap.invalidateSize());
       });
     },
+    initDestMap() {
+      loadLeaflet().then((L) => {
+        const defaultLat = parseFloat(process.env.VUE_APP_ORIGIN_LAT) || -6.2;
+        const defaultLng = parseFloat(process.env.VUE_APP_ORIGIN_LNG) || 106.8;
+
+        this.destMap = L.map(this.$refs.destMap, {
+          center: [defaultLat, defaultLng],
+          zoom: 12,
+          zoomControl: true,
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap',
+          maxZoom: 19,
+        }).addTo(this.destMap);
+
+        this.destMap.on('click', (e) => {
+          const { lat, lng } = e.latlng;
+          this.form.destLat = lat;
+          this.form.destLng = lng;
+
+          if (this.destMarker) {
+            this.destMarker.setLatLng([lat, lng]);
+          } else {
+            this.destMarker = L.marker([lat, lng], {
+              icon: L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/32/684/684908.png',
+                iconSize: [28, 28],
+                iconAnchor: [14, 28],
+                popupAnchor: [0, -28],
+              }),
+            }).addTo(this.destMap);
+          }
+
+          this.destMarker.bindPopup('Lokasi tujuan Anda').openPopup();
+          this.reverseGeocodeDest(lat, lng);
+        });
+
+        this.$nextTick(() => this.destMap.invalidateSize());
+      });
+    },
     async loadOptions(withAvailability = false) {
       this.loadingOptions = true;
       try {
@@ -320,11 +409,15 @@ export default {
           passenger_count: this.form.passengers,
           trip_type: this.form.tripType,
           origin_area_id: this.form.originAreaId,
-          destination_area_id: this.form.destinationAreaId,
+          destination_area_id: this.form.originAreaId,
         } : {};
         const response = await axios.get('/charter-bookings/options', { params });
         this.serviceAreas = response.data.service_areas || [];
         this.busTypes = response.data.bus_types || [];
+        if (!this.form.originAreaId && this.serviceAreas.length > 0) {
+          this.form.originAreaId = this.serviceAreas[0].id;
+          this.form.destinationAreaId = this.serviceAreas[0].id;
+        }
         if (this.form.busTypeId && !this.selectedBusType.is_available) this.form.busTypeId = null;
       } catch (error) {
         this.notifyError(error, 'Opsi booking tidak dapat dimuat.');
@@ -361,7 +454,7 @@ export default {
       try {
         const response = await axios.post('/charter-bookings', {
           origin_area_id: this.form.originAreaId,
-          destination_area_id: this.form.destinationAreaId,
+          destination_area_id: this.form.originAreaId,
           origin: this.form.origin,
           destination: this.form.destination,
           trip_type: this.form.tripType,
@@ -374,6 +467,8 @@ export default {
           notes: this.form.notes || null,
           pickup_lat: this.form.pickupLat || null,
           pickup_lng: this.form.pickupLng || null,
+          dest_lat: this.form.destLat || null,
+          dest_lng: this.form.destLng || null,
         });
         this.saved = true;
         this.$notify({ type: 'success', title: 'Booking terkirim', text: response.data.message });
@@ -415,6 +510,7 @@ export default {
       this.form.pickupLng = lng;
       this.form.origin = result.display_name;
       this.pickupSearchResults = [];
+      this.detectAreaFromCoords(lat, lng);
 
       if (this.pickupMap) {
         this.pickupMap.setView([lat, lng], 15);
@@ -432,6 +528,69 @@ export default {
         }
         this.pickupMarker.bindPopup('Lokasi penjemputan Anda').openPopup();
       }
+    },
+    async detectAreaFromCoords(lat, lng) {
+      try {
+        const r = await axios.get('https://nominatim.openstreetmap.org/reverse', {
+          params: { lat, lon: lng, format: 'json', addressdetails: 1, countrycodes: 'id' },
+          headers: { 'Accept-Language': 'id' },
+        });
+        const addr = r.data.address || {};
+        const city = addr.city || addr.town || addr.county || addr.state || '';
+        const match = this.serviceAreas.find(a => city.toLowerCase().includes(a.name.toLowerCase()) || a.name.toLowerCase().includes(city.toLowerCase()));
+        if (match) {
+          this.form.originAreaId = match.id;
+          this.form.destinationAreaId = match.id;
+        }
+      } catch (e) {}
+    },
+    async searchDestAddress() {
+      if (!this.destSearch) return;
+      try {
+        const r = await axios.get('https://nominatim.openstreetmap.org/search', {
+          params: { q: this.destSearch, format: 'json', limit: 5, countrycodes: 'id' },
+          headers: { 'Accept-Language': 'id' },
+        });
+        this.destSearchResults = r.data || [];
+      } catch (e) {
+        this.destSearchResults = [];
+      }
+    },
+    selectDestSearchResult(result) {
+      const lat = parseFloat(result.lat);
+      const lng = parseFloat(result.lon);
+      this.form.destLat = lat;
+      this.form.destLng = lng;
+      this.form.destination = result.display_name;
+      this.destSearchResults = [];
+
+      if (this.destMap) {
+        this.destMap.setView([lat, lng], 15);
+        if (this.destMarker) {
+          this.destMarker.setLatLng([lat, lng]);
+        } else {
+          this.destMarker = window.L.marker([lat, lng], {
+            icon: window.L.icon({
+              iconUrl: 'https://cdn-icons-png.flaticon.com/32/684/684908.png',
+              iconSize: [28, 28],
+              iconAnchor: [14, 28],
+              popupAnchor: [0, -28],
+            }),
+          }).addTo(this.destMap);
+        }
+        this.destMarker.bindPopup('Lokasi tujuan Anda').openPopup();
+      }
+    },
+    async reverseGeocodeDest(lat, lng) {
+      try {
+        const r = await axios.get('https://nominatim.openstreetmap.org/reverse', {
+          params: { lat, lon: lng, format: 'json', countrycodes: 'id' },
+          headers: { 'Accept-Language': 'id' },
+        });
+        if (r.data && r.data.display_name) {
+          this.form.destination = r.data.display_name;
+        }
+      } catch (e) {}
     },
   },
 };

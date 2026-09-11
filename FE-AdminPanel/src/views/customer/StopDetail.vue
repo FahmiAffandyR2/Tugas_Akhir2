@@ -45,6 +45,85 @@
               </div>
             </v-card-text>
           </v-card>
+
+          <!-- Bus Price List -->
+          <v-card class="mb-4">
+            <v-card-title>
+              <v-icon left color="primary">mdi-cash-multiple</v-icon>
+              Harga Sewa Bus
+              <v-spacer />
+              <v-chip v-if="distanceKm" small color="info" dark>
+                <v-icon x-small left>mdi-map-marker-distance</v-icon>
+                {{ distanceKm }} km dari lokasi Anda
+              </v-chip>
+            </v-card-title>
+            <v-card-text>
+              <div v-if="loadingPrices" class="text-center py-6">
+                <v-progress-circular indeterminate color="primary" size="40"></v-progress-circular>
+                <p class="mt-2 grey--text caption">Menghitung harga...</p>
+              </div>
+              <div v-else-if="!userLocation" class="text-center py-6">
+                <v-icon size="48" color="grey lighten-1">mdi-crosshairs-off</v-icon>
+                <p class="mt-2 grey--text">Aktifkan lokasi untuk melihat harga</p>
+                <v-btn small color="primary" outlined @click="getUserLocation" :loading="gettingLocation">
+                  <v-icon left small>mdi-crosshairs</v-icon>Ambil Lokasi
+                </v-btn>
+              </div>
+              <div v-else-if="busPrices.length === 0" class="text-center py-6">
+                <v-icon size="48" color="grey lighten-1">mdi-bus</v-icon>
+                <p class="mt-2 grey--text">Tidak ada bus tersedia</p>
+              </div>
+              <v-row v-else>
+                <v-col v-for="bus in busPrices" :key="bus.id" cols="12" sm="6">
+                  <v-card outlined class="price-card pa-4" :class="{ 'selected-bus': selectedBus && selectedBus.id === bus.id }" @click="selectBus(bus)">
+                    <div class="d-flex align-center justify-space-between mb-3">
+                      <div>
+                        <div class="font-weight-bold text-h6 primary--text">{{ bus.name }}</div>
+                        <div class="caption grey--text">
+                          <v-icon x-small class="mr-1">mdi-account-group</v-icon>
+                          {{ bus.capacity }} kursi
+                        </div>
+                      </div>
+                      <v-avatar :color="getBusColor(bus.slug)" size="48">
+                        <v-icon dark>mdi-bus</v-icon>
+                      </v-avatar>
+                    </div>
+
+                    <v-divider class="mb-3"></v-divider>
+
+                    <div class="price-breakdown">
+                      <div class="d-flex justify-space-between mb-1">
+                        <span class="caption grey--text">Biaya dasar</span>
+                        <span class="caption">{{ formatCurrency(bus.breakdown.base_price) }}</span>
+                      </div>
+                      <div class="d-flex justify-space-between mb-1">
+                        <span class="caption grey--text">Biaya/km ({{ bus.breakdown.distance_km }} km)</span>
+                        <span class="caption">{{ formatCurrency(bus.breakdown.price_per_km * bus.breakdown.distance_km) }}</span>
+                      </div>
+                      <div class="d-flex justify-space-between mb-1">
+                        <span class="caption grey--text">Biaya jemput</span>
+                        <span class="caption">{{ formatCurrency(bus.breakdown.pickup_fee) }}</span>
+                      </div>
+                      <v-divider class="my-2"></v-divider>
+                      <div class="d-flex justify-space-between">
+                        <span class="font-weight-bold">Total Harga</span>
+                        <span class="font-weight-bold primary--text text-h6">{{ bus.formatted_price }}</span>
+                      </div>
+                    </div>
+
+                    <v-btn
+                      block
+                      color="primary"
+                      class="mt-3"
+                      @click.stop="bookBus(bus)"
+                    >
+                      <v-icon left>mdi-bus-plus</v-icon>Pesan {{ bus.name }}
+                    </v-btn>
+                  </v-card>
+                </v-col>
+              </v-row>
+            </v-card-text>
+          </v-card>
         </v-col>
 
         <!-- Nearby Depots -->
@@ -152,6 +231,10 @@
         </v-col>
       </v-row>
     </template>
+    <v-alert v-else-if="!loading && !stop" type="info" text class="mt-4">
+      Data tempat wisata tidak ditemukan.
+      <v-btn text small @click="$router.back()">Kembali</v-btn>
+    </v-alert>
   </div>
 </template>
 
@@ -161,14 +244,21 @@ export default {
     return {
       loading: false,
       loadingDepots: false,
+      loadingPrices: false,
+      gettingLocation: false,
       stop: null,
       nearbyDepots: [],
       selectedDepot: null,
+      busPrices: [],
+      distanceKm: null,
+      userLocation: null,
+      selectedBus: null,
     };
   },
   mounted() {
     if (this.$route.params.stop_id) {
       this.fetchStopDetail();
+      this.getUserLocation();
     }
   },
   methods: {
@@ -186,18 +276,86 @@ export default {
         this.loading = false;
       }
     },
+    getUserLocation() {
+      if (!navigator.geolocation) {
+        console.warn('Geolocation not supported');
+        return;
+      }
+      this.gettingLocation = true;
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          this.userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          this.gettingLocation = false;
+          this.fetchBusPrices();
+        },
+        (error) => {
+          console.warn('Geolocation error:', error.message);
+          this.gettingLocation = false;
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      );
+    },
+    async fetchBusPrices() {
+      if (!this.userLocation || !this.$route.params.stop_id) return;
+      this.loadingPrices = true;
+      try {
+        const response = await axios.get(`/customer-tourist/stops/${this.$route.params.stop_id}/prices`, {
+          params: { lat: this.userLocation.lat, lng: this.userLocation.lng },
+        });
+        this.busPrices = response.data.prices || [];
+        this.distanceKm = response.data.distance_km;
+      } catch (error) {
+        console.error("Failed to fetch bus prices:", error);
+        this.busPrices = [];
+      } finally {
+        this.loadingPrices = false;
+      }
+    },
+    selectBus(bus) {
+      this.selectedBus = bus;
+    },
     selectDepot(depot) {
       this.selectedDepot = depot;
     },
+    bookBus(bus) {
+      this.$router.push({
+        name: "customer-booking",
+        query: {
+          stop_id: this.$route.params.stop_id,
+          bus_type_id: bus.id,
+          distance_km: this.distanceKm,
+        },
+      });
+    },
     goToCharter() {
       if (this.selectedDepot) {
-        this.$router.push({ name: "customer-pesan" });
+        this.$router.push({ name: "customer-booking" });
       }
     },
     goToRoutes() {
       if (this.selectedDepot) {
-        this.$router.push({ name: "customer-pesan" });
+        this.$router.push({ name: "customer-booking" });
       }
+    },
+    formatCurrency(value) {
+      if (value === null || value === undefined) return "Rp 0";
+      return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(value);
+    },
+    getBusColor(slug) {
+      const colors = {
+        elf: 'teal',
+        medium: 'blue',
+        medium_25: 'blue',
+        medium_26: 'blue',
+        big: 'indigo',
+        big_45: 'indigo',
+        big_50: 'indigo',
+        luxury: 'purple',
+      };
+      return colors[slug] || 'grey';
     },
   },
 };
@@ -211,5 +369,25 @@ export default {
   height: 250px;
   background: #f5f5f5;
   border-radius: 14px 14px 0 0;
+}
+.price-card {
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid #ececf3;
+}
+.price-card:hover {
+  border-color: #7c3aed;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+}
+.price-card.selected-bus {
+  border-color: #7c3aed;
+  background: #f9f5ff;
+}
+.price-breakdown {
+  background: #f8f7fb;
+  border-radius: 10px;
+  padding: 12px;
 }
 </style>

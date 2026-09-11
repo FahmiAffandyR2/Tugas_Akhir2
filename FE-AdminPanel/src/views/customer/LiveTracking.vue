@@ -235,15 +235,18 @@ export default {
       this.fetchTracking(booking.id);
     },
     isOnline(booking) {
-      if (this.trackingData && this.trackingData.tracking && this.trackingData.tracking.last_gps_at) {
+      if (this.selectedBooking && this.selectedBooking.id === booking.id && this.trackingData && this.trackingData.tracking && this.trackingData.tracking.last_gps_at) {
         const lastGps = new Date(this.trackingData.tracking.last_gps_at);
         const now = new Date();
         return (now - lastGps) < 5 * 60 * 1000;
       }
+      if (booking.last_position_lat && booking.last_position_lng) {
+        return true;
+      }
       return false;
     },
     getEta(booking) {
-      if (this.trackingData && this.trackingData.eta) {
+      if (this.selectedBooking && this.selectedBooking.id === booking.id && this.trackingData && this.trackingData.eta) {
         return this.trackingData.eta;
       }
       return null;

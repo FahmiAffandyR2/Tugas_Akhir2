@@ -422,11 +422,10 @@ const plainRoutes = [
 router.beforeEach((to, from, next) => {
 
     let to_path = to.path;
-    // remove = from path
-    if (to_path.includes("=")) {
-        to_path = to_path.split("=")[0] + "=";
+    // normalize query params for route matching
+    if (to_path.includes("?")) {
+        to_path = to_path.split("?")[0];
     }
-    console.log(to_path);
 
     let isPlainRoute = plainRoutes.includes(to_path);
 
@@ -461,7 +460,7 @@ router.beforeEach((to, from, next) => {
     const role = Number(localStorage.getItem('internalRole') || localStorage.getItem('userRole'));
     if (role === 2 && !to.meta.driverOnly) return next('/driver/beranda');
     if (to.meta.driverOnly && role !== 2) return next('/dashboard');
-    if (!to.meta.driverOnly && role !== 0) return next('/driver/beranda');
+    if (!to.meta.driverOnly && role !== 0 && role !== 3) return next('/driver/beranda');
 
     return next()
     // Specify the current path as the customState parameter, meaning it

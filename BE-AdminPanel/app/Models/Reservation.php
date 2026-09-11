@@ -9,7 +9,7 @@ class Reservation extends Model
 {
     use HasFactory;
 
-    protected $guarded = ['id', 'created_at', 'updated_at', 'deleted_at'];
+    protected $guarded = ['id', 'created_at', 'updated_at'];
     
     protected $table = 'customer_reserved_trips';
 
@@ -33,6 +33,21 @@ class Reservation extends Model
     public function lastStop() 
     {
         return $this->belongsTo(Stop::class, 'end_stop_id');
+    }
+
+    public function userPayments()
+    {
+        return $this->hasMany(UserPayment::class, 'reservation_id');
+    }
+
+    public function userRefunds()
+    {
+        return $this->hasMany(UserRefund::class, 'reservation_id');
+    }
+
+    public function complaints()
+    {
+        return $this->hasMany(Complaint::class, 'reservation_id');
     }
 
 }

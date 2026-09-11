@@ -76,11 +76,11 @@ export default {
             if (error && error.name !== 'NavigationDuplicated') throw error;
           });
         } else {
-          const error = Error(
+          const fetchError = Error(
             "Unable to fetch user after login, check your API settings."
           );
-          error.name = "Fetch User";
-          throw error;
+          fetchError.name = "Fetch User";
+          throw fetchError;
         }
       } catch (error) {
         this.error = getError(error);

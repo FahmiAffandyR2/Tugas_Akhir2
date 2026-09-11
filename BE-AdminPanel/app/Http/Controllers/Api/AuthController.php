@@ -164,7 +164,7 @@ class AuthController extends Controller
             if ($portal === 'customer' && $role !== 1) {
                 return response()->json(['message' => 'Akun ini bukan akun customer. Silakan gunakan portal internal.'], 403);
             }
-            if ($portal === 'internal' && !in_array($role, [0, 2], true)) {
+            if ($portal === 'internal' && !in_array($role, [0, 2, 3], true)) {
                 return response()->json(['message' => 'Akun customer harus masuk melalui portal customer.'], 403);
             }
             if (($user->role == 1 && $user->status_id != 1) ||($user->role == 2 && $user->status_id == 3))  {
@@ -182,7 +182,7 @@ class AuthController extends Controller
             }
             //create token
             $tokenAbility = "";
-            if ($role == 0)
+            if ($role == 0 || $role == 3)
                 $tokenAbility = "admin";
             else if ($role == 1)
                 $tokenAbility = "customer";
@@ -348,7 +348,7 @@ class AuthController extends Controller
             if ($portal === 'customer' && $role !== 1) {
                 return response()->json(['message' => 'Akun ini bukan akun customer. Silakan gunakan portal internal.'], 403);
             }
-            if ($portal === 'internal' && !in_array($role, [0, 2], true)) {
+            if ($portal === 'internal' && !in_array($role, [0, 2, 3], true)) {
                 return response()->json(['message' => 'Akun customer harus masuk melalui portal customer.'], 403);
             }
             if (($user->role == 1 && $user->status_id != 1) || ($user->role == 2 && $user->status_id == 3)) {
@@ -441,7 +441,7 @@ class AuthController extends Controller
                     LaravelAuth::logout();
                     return response(['message' => 'Akun ini bukan akun customer. Silakan gunakan portal internal.'], 403);
                 }
-                if ($request->portal === 'internal' && !in_array($role, [0, 2], true)) {
+                if ($request->portal === 'internal' && !in_array($role, [0, 2, 3], true)) {
                     LaravelAuth::logout();
                     return response(['message' => 'Akun customer harus masuk melalui portal customer.'], 403);
                 }

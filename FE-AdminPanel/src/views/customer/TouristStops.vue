@@ -152,7 +152,7 @@ export default {
     },
     bookFromDepot(stop) {
       if (stop.nearest_depot) {
-        this.$router.push({ name: "customer-pesan" });
+        this.$router.push({ name: "customer-booking" });
       }
     },
   },

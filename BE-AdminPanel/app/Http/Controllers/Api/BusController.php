@@ -28,6 +28,22 @@ class BusController extends Controller
         return response()->json($this->busRepository->all(['*'], ['driver', 'depot', 'busType']), 200);
     }
 
+    public function staffIndex(Request $request)
+    {
+        $staff = $request->user();
+        $depotId = $staff->depot_id;
+
+        if (!$depotId) {
+            return response()->json(['buses' => []]);
+        }
+
+        $buses = \App\Models\Bus::with(['driver', 'depot', 'busType'])
+            ->where('depot_id', $depotId)
+            ->get();
+
+        return response()->json(['buses' => $buses]);
+    }
+
     public function getBus($bus_id)
     {
         //get bus by id

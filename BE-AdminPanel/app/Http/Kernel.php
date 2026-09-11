@@ -70,6 +70,7 @@ class Kernel extends HttpKernel
         'admin' => \App\Http\Middleware\AdminMiddleware::class,
         'customer' => \App\Http\Middleware\CustomerMiddleware::class,
         'driver' => \App\Http\Middleware\DriverMiddleware::class,
+        'staff' => \App\Http\Middleware\StaffMiddleware::class,
         'precognitive' => \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
         'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
     ];

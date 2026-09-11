@@ -294,7 +294,8 @@ export default {
       this.openingInvoiceId = item.id;
       try {
         const response = await axios.get(`/charter-bookings/${item.id}/invoice`, { responseType: 'blob' });
-        const url = URL.createObjectURL(new Blob([response.data], { type: 'text/html' }));
+        const contentType = response.headers['content-type'] || 'text/html';
+        const url = URL.createObjectURL(new Blob([response.data], { type: contentType }));
         window.open(url, '_blank', 'noopener');
         setTimeout(() => URL.revokeObjectURL(url), 60000);
       } catch (error) {

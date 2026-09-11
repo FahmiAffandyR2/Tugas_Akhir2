@@ -15,19 +15,14 @@
         Emailed Verified
       </li>
     </ul>
-    <VerifyEmail v-if="!authUser.emailVerified" class="mt-4" />
   </div>
 </template>
 
 <script>
 import { mapGetters } from "vuex";
-import VerifyEmail from "@/components/VerifyEmail";
 
 export default {
   name: "AuthUser",
-  components: {
-    VerifyEmail,
-  },
   computed: {
     ...mapGetters("auth", ["authUser"]),
   },

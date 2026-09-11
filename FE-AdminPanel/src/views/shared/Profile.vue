@@ -59,7 +59,7 @@ export default {
     phoneRules:[v=>!v||/^[0-9+()\-\s]{8,30}$/.test(v)||'Nomor telepon tidak valid'],
   }),
   computed:{
-    roleLabel(){return Number(this.role)===2?'Driver':'Customer'},
+    roleLabel(){const r=Number(this.role);return r===0?'Admin':r===2?'Driver':'Customer'},
     initials(){const name=this.form.name||this.roleLabel;return name.split(' ').filter(Boolean).map(v=>v[0]).slice(0,2).join('').toUpperCase()},
     currentPasswordRules(){return this.changePassword?[v=>!!v||'Password saat ini wajib diisi']:[]},
     passwordRules(){return this.changePassword?[v=>!!v||'Password baru wajib diisi',v=>(v&&v.length>=8)||'Password minimal 8 karakter']:[]},

@@ -133,7 +133,7 @@ export default {
         .catch((error) => {
           this.$notify({ title: "Error", text: "Gagal memuat data routes", type: 'error' });
           console.log(error);
-          auth.checkError(error.response.data.message, this.$router, this.$swal);
+          auth.checkError(error, this.$router, this.$swal);
         })
         .then(() => {
           this.isLoading = false;
@@ -197,7 +197,7 @@ export default {
               })
               .catch((error) => {
                 this.$notify({ title: "Error", text: "Gagal menghapus route", type: 'error' });
-                this.$swal("Error", error.response.data.message, "error");
+                this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
               });
           }
         });

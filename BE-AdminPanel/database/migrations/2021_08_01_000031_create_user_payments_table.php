@@ -19,7 +19,7 @@ class CreateUserPaymentsTable extends Migration
             $table->unsignedInteger('user_id');
             $table->foreign('user_id')->references('id')->on('users');
 
-            $table->double('amount');
+            $table->decimal('amount', 15, 2);
             $table->date('payment_date');
 
             //reservation_id

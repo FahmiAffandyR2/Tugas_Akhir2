@@ -87,7 +87,7 @@
               <div>{{ selectedLocation.pickup_address }}</div>
               <v-chip small outlined class="mt-1">
                 <v-icon small left>mdi-crosshairs</v-icon>
-                {{ selectedLocation.pickup_lat.toFixed(6) }}, {{ selectedLocation.pickup_lng.toFixed(6) }}
+                {{ selectedLocation.pickup_lat ? selectedLocation.pickup_lat.toFixed(6) : '-' }}, {{ selectedLocation.pickup_lng ? selectedLocation.pickup_lng.toFixed(6) : '-' }}
               </v-chip>
             </div>
 
@@ -224,7 +224,7 @@ export default {
       this.loading = true;
       try {
         const response = await axios.get("/customer-locations", { params: this.filters });
-        this.locations = response.data.locations;
+        this.locations = response.data.locations || [];
         if (this.locations.length > 0) {
           this.fitMapToMarkers();
         }
@@ -269,7 +269,7 @@ export default {
             limit: 5,
           },
         });
-        this.nearbyDepots = response.data.depots;
+        this.nearbyDepots = response.data.depots || [];
       } catch (error) {
         console.error("Failed to find depots:", error);
         this.$swal({ icon: "error", title: "Gagal mencari depo terdekat" });

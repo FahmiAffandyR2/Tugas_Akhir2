@@ -114,15 +114,16 @@ class ReservationController extends Controller
             DB::beginTransaction();
             try {
                 $customer = $reservation->customer;
-                $customer->wallet += $reservation->paid_price;
-                $customer->save();
+                \App\Models\User::where('id', $customer->id)->increment('wallet', $reservation->paid_price);
+                $customer->refresh();
 
                 $plannedTrip = $reservation->plannedTrip;
                 $couponsCustomer = $this->couponCustomerRepository->findByWhere(['user_id' => $customer->id, 'planned_trip_id' => $plannedTrip->id]);
                 if(!$couponsCustomer->isEmpty())
                 {
                     $couponCustomer = $couponsCustomer->first();
-                    $couponCustomer->delete();
+                    $couponCustomer->is_cancelled = true;
+                    $couponCustomer->save();
                 }
 
                 $reservation->ride_status = 4;
@@ -135,13 +136,11 @@ class ReservationController extends Controller
                 {
                     //deduct from admin wallet
                     $admin = $this->userRepository->allWhere(['*'], [], ['role' => 0], false)->first();
-                    $admin->wallet -= $reservation->admin_share;
-                    $admin->save();
+                    \App\Models\User::where('id', $admin->id)->decrement('wallet', $reservation->admin_share);
 
                     //deduct from driver wallet
                     $driver = $reservation->plannedTrip->driver;
-                    $driver->wallet -= $reservation->driver_share;
-                    $driver->save();
+                    \App\Models\User::where('id', $driver->id)->decrement('wallet', $reservation->driver_share);
 
                     $reservationPayments = $this->userPaymentRepository->allWhere(['*'], [], ['reservation_id' => $reservation->id], false);
 

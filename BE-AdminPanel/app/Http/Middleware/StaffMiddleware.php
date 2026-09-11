@@ -4,7 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 
-class CustomerMiddleware
+class StaffMiddleware
 {
     /**
      * Handle an incoming request.
@@ -15,7 +15,7 @@ class CustomerMiddleware
      */
     public function handle($request, Closure $next)
     {
-        if (!$request->user() || (int) $request->user()->role !== 1) {
+        if (!$request->user() || (int) $request->user()->role !== 3) {
             abort(403, 'Unauthorized action.');
         }
         return $next($request);
