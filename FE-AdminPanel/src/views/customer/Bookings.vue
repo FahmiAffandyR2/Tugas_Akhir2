@@ -3,11 +3,8 @@
     <div class="d-flex flex-column flex-sm-row justify-space-between align-sm-center mb-6">
       <div>
         <h1 class="text-h4 font-weight-bold mb-2">Pemesanan Saya</h1>
-        <p class="grey--text mb-0">Pantau permintaan, penawaran, pembayaran, dan armada perjalanan Anda.</p>
+        <p class="grey--text mb-0">Pantau permintaan, penawaran, dan pembayaran perjalanan Anda.</p>
       </div>
-      <v-btn color="primary" large class="mt-4 mt-sm-0" to="/customer/pesan">
-        <v-icon left>mdi-plus</v-icon>Pesan Bus
-      </v-btn>
     </div>
 
     <v-skeleton-loader v-if="loading" type="list-item-three-line@3" />
@@ -23,7 +20,7 @@
           </div>
           <div class="flex-grow-1">
             <div class="d-flex flex-wrap align-center mb-2">
-              <h2 class="text-h6 font-weight-bold mb-0 mr-3">{{ booking.origin }} - {{ booking.destination }}</h2>
+              <h2 class="text-h6 font-weight-bold mb-0 mr-3">{{ booking.origin }} - {{ booking.destination }}</h2><ol v-if="booking.destinations && booking.destinations.length" class="body-2 mt-2"><li v-for="(stop, i) in booking.destinations" :key="i">{{ stop.address }}</li></ol>
               <v-chip small :color="statusInfo(booking.status).color" dark class="mr-2">{{ statusInfo(booking.status).label }}</v-chip>
               <v-chip v-if="booking.quoted_price" small :color="paymentInfo(booking.payment_status).color" outlined>
                 {{ paymentInfo(booking.payment_status).label }}
@@ -33,7 +30,7 @@
             <div class="booking-meta">
               <span><v-icon x-small>mdi-calendar</v-icon> {{ formatDate(booking.departure_date) }}</span>
               <span>{{ busName(booking) }}</span>
-              <span>{{ booking.passenger_count }} peserta</span>
+              <span>{{ booking.requested_bus_count || 1 }} unit bus</span>
             </div>
             <div class="caption grey--text mt-1">No. {{ booking.reference_code }}</div>
 
@@ -46,20 +43,27 @@
                 <div class="step-dot"><v-icon x-small>{{ step.icon }}</v-icon></div>
                 <div>
                   <div class="step-title">{{ step.title }}</div>
-                  <small>{{ step.text }}</small>
+                  <template v-if="step.key === 'quote'">
+                    <small class="font-weight-bold">{{ busName(booking) }}</small>
+                    <small>{{ booking.requested_bus_count || 1 }} unit bus</small>
+                    <small v-if="booking.quoted_price">{{ currency(bookingUnitPrice(booking)) }} / unit</small>
+                    <small v-else>Harga belum tersedia.</small>
+                    <small v-if="booking.price_breakdown && booking.price_breakdown.base_price != null">Harga dasar: {{ currency(booking.price_breakdown.base_price) }} / unit</small>
+                  </template>
+                  <small v-else>{{ step.text }}</small>
                 </div>
               </div>
             </div>
 
-            <v-alert v-if="booking.status === 'waiting_quote'" type="info" text dense class="mt-4 mb-0 waiting-alert">
+            <v-alert v-if="booking.status === 'waiting_quote' && booking.payment_status !== 'paid'" type="info" text dense class="mt-4 mb-0 waiting-alert">
               <strong>Permintaan sedang diperiksa admin.</strong>
               <div class="caption">Estimasi harga sudah dihitung otomatis. Tim admin akan mengecek armada dan melengkapi instruksi pembayaran.</div>
             </v-alert>
 
             <div v-if="booking.quoted_price" class="quote mt-4 pa-4">
-              <span>Estimasi Harga</span>
+              <span>{{ booking.status === 'waiting_quote' && booking.payment_status !== 'paid' ? 'Estimasi Total Pembayaran' : 'Total Pembayaran' }}</span>
               <strong>{{ currency(booking.quoted_price) }}</strong>
-              <small v-if="booking.distance_km">{{ booking.distance_km }} km · {{ booking.requested_bus_count || 1 }} unit</small>
+              <small v-if="booking.distance_km && booking.payment_status !== 'paid'">{{ booking.distance_km }} km · {{ booking.requested_bus_count || 1 }} unit</small>
               <small v-if="booking.admin_notes">{{ booking.admin_notes }}</small>
               <div v-if="booking.payment_deadline && booking.payment_status !== 'paid' && ['quote_sent', 'approved'].includes(booking.status)" class="payment-deadline mt-2">
                 <v-icon x-small>mdi-clock-outline</v-icon>
@@ -68,27 +72,7 @@
               </div>
             </div>
 
-            <v-card v-if="showAssignment(booking)" outlined class="assignment mt-4 pa-4">
-              <div class="font-weight-bold mb-2">
-                <v-icon small color="primary" class="mr-1">mdi-bus-check</v-icon>Armada telah ditetapkan
-              </div>
-              <template v-if="booking.assignments && booking.assignments.length">
-                <div v-for="(assignment, index) in booking.assignments" :key="assignment.id || index" class="caption mt-1">
-                  Unit {{ index + 1 }}:
-                  <strong>{{ assignment.bus ? assignment.bus.license : '-' }}</strong>
-                  - Driver: <strong>{{ assignment.driver ? assignment.driver.name : '-' }}</strong>
-                  <span v-if="assignment.bus && assignment.bus.depot"> · Depo {{ assignment.bus.depot.name }}</span>
-                </div>
-              </template>
-              <template v-else>
-                <div class="caption">Bus: <strong>{{ booking.bus.license }}</strong> - Driver: <strong>{{ booking.driver.name }}</strong></div>
-                <div v-if="booking.bus.depot" class="caption mt-1">Depo asal: {{ booking.bus.depot.name }}</div>
-              </template>
-              <div v-if="booking.departure_time" class="caption mt-1">
-                Berangkat {{ booking.departure_time.slice(0, 5) }}
-                <span v-if="booking.return_date && booking.return_time"> - Kembali {{ formatDate(booking.return_date) }} {{ booking.return_time.slice(0, 5) }}</span>
-              </div>
-            </v-card>
+
 
             <v-alert v-if="booking.payment_status === 'rejected'" type="error" text dense class="mt-4 mb-0">
               Pembayaran ditolak: {{ booking.payment_rejection_reason }}
@@ -127,7 +111,7 @@
       <div class="empty-icon mx-auto mb-5"><v-icon size="58" color="primary">mdi-clipboard-text-outline</v-icon></div>
       <h2 class="text-h6 font-weight-bold">Belum ada pemesanan</h2>
       <p class="grey--text">Mulai rencanakan perjalanan pertama Anda bersama EZBus.</p>
-      <v-btn color="primary" to="/customer/pesan">Pesan Bus Sekarang</v-btn>
+      <p class="text-caption">Gunakan tombol Pesan Bus di kanan atas untuk memulai.</p>
     </v-card>
 
     <v-dialog v-model="paymentDialog" max-width="650" persistent>
@@ -142,6 +126,11 @@
         </v-card-title>
         <v-divider />
         <v-card-text class="pa-6">
+          <div class="mb-4">
+            <div class="font-weight-bold">Rincian bus</div>
+            <div>{{ busName(paymentBooking) }}</div>
+            <div>{{ paymentBooking.requested_bus_count || 1 }} unit × {{ currency(bookingUnitPrice(paymentBooking)) }} / unit</div>
+          </div>
           <div class="payment-amount pa-4 text-center mb-5">
             <div class="caption">TOTAL PEMBAYARAN</div>
             <div class="text-h4 font-weight-bold">{{ currency(paymentBooking.quoted_price) }}</div>
@@ -243,9 +232,6 @@ export default {
       } finally {
         this.loading = false;
       }
-    },
-    showAssignment(item) {
-      return item.status === 'approved' && item.payment_status === 'paid' && ((item.assignments && item.assignments.length) || (item.bus && item.driver));
     },
     canPay(item) {
       return Boolean(item.quoted_price && item.payment_bank_name && ['quote_sent', 'approved'].includes(item.status) && ['unpaid', 'rejected'].includes(item.payment_status));
@@ -357,8 +343,8 @@ export default {
         { key: 'request', title: 'Permintaan diterima', text: 'Rencana perjalanan sudah masuk.', icon: 'mdi-check', state: 'done' },
         {
           key: 'quote',
-          title: 'Estimasi harga',
-          text: booking.quoted_price ? this.currency(booking.quoted_price) : 'Belum tersedia.',
+          title: paid ? 'Harga final' : 'Estimasi harga',
+          text: '',
           icon: booking.quoted_price ? 'mdi-check' : 'mdi-dots-horizontal',
           state: booking.quoted_price ? 'done' : 'active',
         },
@@ -369,14 +355,11 @@ export default {
           icon: paid ? 'mdi-check' : 'mdi-credit-card-outline',
           state: paid ? 'done' : booking.quoted_price ? 'active' : 'todo',
         },
-        {
-          key: 'assignment',
-          title: 'Armada & driver',
-          text: this.showAssignment(booking) ? 'Sudah ditetapkan.' : 'Dibuka setelah lunas.',
-          icon: this.showAssignment(booking) ? 'mdi-check' : 'mdi-bus-clock',
-          state: this.showAssignment(booking) ? 'done' : paid ? 'active' : 'todo',
-        },
       ];
+    },
+    bookingUnitPrice(booking) {
+      const count = Math.max(1, Number(booking.requested_bus_count) || 1);
+      return Number(booking.quoted_price || 0) / count;
     },
     formatDate(date) {
       return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${date}T00:00:00`));
@@ -461,7 +444,7 @@ export default {
 
 .progress-track {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -553,10 +536,6 @@ export default {
 .overdue-text {
   color: #d32f2f;
   font-weight: 700;
-}
-
-.assignment {
-  border-radius: 12px;
 }
 
 .payment-actions {

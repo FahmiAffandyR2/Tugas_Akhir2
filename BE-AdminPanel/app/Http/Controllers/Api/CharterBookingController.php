@@ -74,16 +74,23 @@ class CharterBookingController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'origin_area_id' => ['required', Rule::exists('service_areas', 'id')->where('is_active', true)],
-            'destination_area_id' => ['required', Rule::exists('service_areas', 'id')->where('is_active', true)],
+            'origin_area_id' => ['nullable', Rule::exists('service_areas', 'id')->where('is_active', true)],
+            'destination_area_id' => ['nullable', Rule::exists('service_areas', 'id')->where('is_active', true)],
             'origin' => 'required|string|max:255',
             'destination' => 'required|string|max:255',
+            'destinations' => 'sometimes|array|min:1|max:10',
+            'destinations.*' => 'required|array:address,lat,lng',
+            'destinations.*.address' => 'required|string|max:255',
+            'destinations.*.lat' => 'nullable|required_with:destinations.*.lng|numeric|between:-90,90',
+            'destinations.*.lng' => 'nullable|required_with:destinations.*.lat|numeric|between:-180,180',
             'trip_type' => ['required', Rule::in(['one_way', 'round_trip'])],
+            'trip_style' => ['nullable', Rule::in(['day_trip', 'overnight'])],
             'departure_date' => 'required|date|after_or_equal:today',
             'departure_time' => 'required|date_format:H:i',
             'return_date' => 'nullable|required_if:trip_type,round_trip|date|after_or_equal:departure_date',
             'return_time' => 'nullable|required_if:trip_type,round_trip|date_format:H:i',
-            'passenger_count' => 'required|integer|min:1|max:1000',
+            'passenger_count' => 'nullable|required_without:requested_bus_count|integer|min:1|max:1000',
+            'requested_bus_count' => 'nullable|integer|min:1|max:20',
             'bus_type_id' => ['required', Rule::exists('bus_types', 'id')->where('is_active', true)],
             'notes' => 'nullable|string|max:2000',
             'pickup_lat' => 'nullable|numeric|between:-90,90',
@@ -92,6 +99,25 @@ class CharterBookingController extends Controller
             'dropoff_lng' => 'nullable|numeric|between:-180,180',
         ]);
 
+        if (isset($validated['destinations'])) {
+            $validated['destinations'] = array_values($validated['destinations']);
+            $last = $validated['destinations'][count($validated['destinations']) - 1];
+            $validated['destination'] = $last['address'];
+            $validated['dropoff_lat'] = $last['lat'] ?? null;
+            $validated['dropoff_lng'] = $last['lng'] ?? null;
+        }
+
+        if (!empty($validated['trip_style'])) {
+            $validDates = $validated['trip_type'] === 'round_trip'
+                && ($validated['trip_style'] === 'day_trip'
+                    ? ($validated['return_date'] ?? null) === $validated['departure_date']
+                    : ($validated['return_date'] ?? '') > $validated['departure_date']);
+            if (!$validDates) {
+                throw ValidationException::withMessages(['return_date' => 'Day Trip harus pulang di hari yang sama; Menginap harus pulang setelah tanggal berangkat.']);
+            }
+        }
+        unset($validated['trip_style']);
+
         if (($validated['trip_type'] ?? null) === 'round_trip'
             && $validated['return_date'] === $validated['departure_date']
             && $validated['return_time'] <= $validated['departure_time']) {
@@ -99,6 +125,11 @@ class CharterBookingController extends Controller
         }
 
         $busType = BusType::findOrFail($validated['bus_type_id']);
+        $wholeBusBooking = isset($validated['requested_bus_count']) && !isset($validated['passenger_count']);
+        if ($wholeBusBooking) {
+            // Reserve the full seating capacity without asking for a passenger headcount.
+            $validated['passenger_count'] = max(1, (int) $busType->capacity) * $validated['requested_bus_count'];
+        }
         $availability = $this->availabilityForBusType(
             $busType,
             (int) $validated['passenger_count'],
@@ -122,18 +153,19 @@ class CharterBookingController extends Controller
             ]);
         }
 
-        return DB::transaction(function () use ($request, $validated) {
+        return DB::transaction(function () use ($request, $validated, $wholeBusBooking) {
             do {
                 $reference = 'REQ-' . random_int(100000, 999999);
             } while (CharterBooking::where('reference_code', $reference)->exists());
 
             $busType = BusType::findOrFail($validated['bus_type_id']);
-            $originArea = ServiceArea::find($validated['origin_area_id']);
-            $destinationArea = ServiceArea::find($validated['destination_area_id']);
+            $originArea = isset($validated['origin_area_id']) ? ServiceArea::find($validated['origin_area_id']) : null;
+            $destinationArea = isset($validated['destination_area_id']) ? ServiceArea::find($validated['destination_area_id']) : null;
             $distanceKm = $this->estimateDistanceKm($originArea, $destinationArea, $validated['trip_type']);
             $validated['bus_type'] = $busType->slug;
             $validated['requested_bus_count'] = (int) ceil($validated['passenger_count'] / max(1, $busType->capacity));
             $price = $this->calculatePrice($busType, $distanceKm, $validated['requested_bus_count']);
+            $price['breakdown']['booking_mode'] = $wholeBusBooking ? 'whole_bus' : 'passengers';
 
             $booking = CharterBooking::create(array_merge($validated, [
                 'reference_code' => $reference,
@@ -190,16 +222,7 @@ class CharterBookingController extends Controller
             'customer:id,name,email,tel_number', 'bus.depot', 'busType', 'originArea', 'destinationArea',
             'assignments.bus.depot', 'assignments.driver:id,name,email,tel_number',
             'driver:id,name,email,tel_number', 'depot', 'operationalTrip:id,started_at,ended_at,last_position_lat,last_position_lng',
-        ])->latest()
-          ->where(function ($q) use ($depotId) {
-              $q->where('depot_id', $depotId)
-                ->orWhereHas('bus', function ($q2) use ($depotId) {
-                    $q2->where('depot_id', $depotId);
-                })
-                ->orWhereHas('assignments.bus', function ($q3) use ($depotId) {
-                    $q3->where('depot_id', $depotId);
-                });
-          });
+        ])->latest()->forDepot($depotId);
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
@@ -239,15 +262,7 @@ class CharterBookingController extends Controller
             return response()->json(['dashboard' => []]);
         }
 
-        $baseQuery = CharterBooking::where(function ($q) use ($depotId) {
-            $q->where('depot_id', $depotId)
-              ->orWhereHas('bus', function ($q2) use ($depotId) {
-                  $q2->where('depot_id', $depotId);
-              })
-              ->orWhereHas('assignments.bus', function ($q3) use ($depotId) {
-                  $q3->where('depot_id', $depotId);
-              });
-        });
+        $baseQuery = CharterBooking::forDepot($depotId);
 
         $totalBookings = $baseQuery->count();
         $pendingBookings = (clone $baseQuery)->where('status', 'waiting_quote')->count();
@@ -391,8 +406,18 @@ class CharterBookingController extends Controller
 
     public function options(Request $request)
     {
+        $request->validate([
+            'departure_date' => 'nullable|date',
+            'return_date' => 'nullable|date|after_or_equal:departure_date',
+            'passenger_count' => 'nullable|integer|min:0|max:1000',
+            'trip_type' => ['nullable', Rule::in(['one_way', 'round_trip'])],
+            'origin_area_id' => 'nullable|integer',
+            'destination_area_id' => 'nullable|integer',
+        ]);
         $areas = ServiceArea::where('is_active', true)->orderBy('name')->get(['id', 'name', 'area_group']);
-        $busTypes = BusType::where('is_active', true)->orderBy('capacity')->get();
+        $busTypes = BusType::where('is_active', true)
+            ->whereHas('buses', fn ($query) => $query->where('is_active', true))
+            ->orderBy('capacity')->get();
 
         $passengers = (int) $request->query('passenger_count', 0);
         $departureDate = $request->query('departure_date');
@@ -419,7 +444,7 @@ class CharterBookingController extends Controller
                 );
             }
 
-            $availableBuses = Bus::where('bus_type_id', $busType->id)->where('is_active', true)->count();
+            $availableBuses = Bus::where('bus_type_id', $busType->id)->where('is_active', true)->where('status', 'available')->count();
             return array_merge($busType->toArray(), [
                 'available_buses' => $availableBuses,
                 'required_buses' => null,
@@ -646,7 +671,11 @@ class CharterBookingController extends Controller
     public function invoice(Request $request, CharterBooking $charterBooking)
     {
         $user = $request->user();
-        if ((int) $user->role !== 0 && (int) $charterBooking->customer_id !== (int) $user->id) {
+        $isStaffForDepot = (int) $user->role === 3 && $user->depot_id
+            && CharterBooking::whereKey($charterBooking->id)->forDepot($user->depot_id)->exists();
+        if ((int) $user->role !== 0
+            && !((int) $user->role === 1 && (int) $charterBooking->customer_id === (int) $user->id)
+            && !$isStaffForDepot) {
             abort(403, 'Invoice bukan milik user ini.');
         }
 
@@ -669,6 +698,11 @@ class CharterBookingController extends Controller
             'large' => 'Large Bus',
             'luxury' => 'Luxury Bus',
         ][$booking->bus_type] ?? $booking->bus_type);
+
+        $destinationList = '';
+        foreach ($booking->destinations ?? [] as $index => $stop) {
+            $destinationList .= '<li>' . e($stop['address']) . '</li>';
+        }
 
         $html = '<!doctype html>
 <html lang="id">
@@ -709,14 +743,14 @@ class CharterBookingController extends Controller
       </div>
       <div class="box">
         <div class="label">Rute perjalanan</div>
-        <div class="value">' . e($booking->origin) . ' - ' . e($booking->destination) . '</div>
+        <div class="value">' . e($booking->origin) . ' - ' . e($booking->destination) . '</div><ol>' . $destinationList . '</ol>
         <div class="muted">Berangkat: ' . e($departureDate) . ' ' . e($booking->departure_time ? substr($booking->departure_time, 0, 5) : '') . '</div>
         <div class="muted">Kembali: ' . e($returnDate) . ' ' . e($booking->return_time ? substr($booking->return_time, 0, 5) : '') . '</div>
       </div>
       <div class="box">
         <div class="label">Armada</div>
         <div>Jenis Bus: <strong>' . e($busType) . '</strong></div>
-        <div>Jumlah Peserta: <strong>' . e((string) $booking->passenger_count) . ' orang</strong></div>
+        <div>' . (($booking->price_breakdown['booking_mode'] ?? null) === 'whole_bus' ? 'Kapasitas dipesan' : 'Jumlah Peserta') . ': <strong>' . e((string) $booking->passenger_count) . ' orang</strong></div>
         <div>Bus: <strong>' . e($assignedBuses ?: optional($booking->bus)->license ?: '-') . '</strong></div>
         <div>Driver: <strong>' . e($assignedDrivers ?: optional($booking->driver)->name ?: '-') . '</strong></div>
       </div>
@@ -729,6 +763,7 @@ class CharterBookingController extends Controller
 
     <section class="total">
       <div class="total-box">
+        ' . (isset($booking->price_breakdown['base_price']) ? '<div class="total-row"><span>Harga Dasar Bus / unit</span><span>Rp ' . number_format((float) $booking->price_breakdown['base_price'], 0, ',', '.') . '</span></div>' : '') . '
         <div class="total-row"><span>Total Pembayaran</span><span class="amount">' . e($amount) . '</span></div>
         <div class="muted" style="margin-top:8px">Status pembayaran telah diverifikasi oleh Admin.</div>
       </div>

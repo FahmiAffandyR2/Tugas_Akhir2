@@ -1,12 +1,14 @@
 <template>
   <div>
     <section class="customer-hero pa-6 pa-md-9 mb-7">
-      <v-row align="center"><v-col cols="12" md="7">
+      <div class="d-flex justify-end mb-4">
+        <v-btn color="white" class="primary--text" to="/customer/pesan"><v-icon left>mdi-bus</v-icon>Pesan Bus</v-btn>
+      </div>
+      <div>
         <div class="hero-label mb-3"><v-icon small color="white" class="mr-1">mdi-star-four-points</v-icon> Perjalanan jadi lebih mudah</div>
         <h1 class="text-h4 text-md-h3 font-weight-bold mb-3">Mau pergi ke mana?</h1>
         <p class="hero-copy mb-6">Pesan satu bus penuh untuk study tour, wisata keluarga, gathering, atau perjalanan instansi.</p>
-        <v-btn x-large color="white" class="primary--text px-7" to="/customer/pesan"><v-icon left>mdi-bus-plus</v-icon>Pesan Bus Sekarang</v-btn>
-      </v-col><v-col cols="12" md="5" class="d-none d-md-flex justify-center"><div class="hero-bus"><v-icon size="118" color="white">mdi-bus-side</v-icon><div class="route-line"><span></span><span></span><span></span></div></div></v-col></v-row>
+      </div>
     </section>
 
     <v-row class="mb-3">
@@ -16,15 +18,15 @@
     <div class="d-flex align-center justify-space-between mb-4"><div><h2 class="text-h5 font-weight-bold mb-1">Pilih bus sesuai kebutuhan</h2><p class="grey--text mb-0">Kapasitas dan kenyamanan untuk setiap jenis perjalanan.</p></div></div>
     <v-row class="mb-5"><v-col v-for="bus in buses" :key="bus.title" cols="12" md="4"><v-card flat class="bus-card pa-5"><div class="bus-visual mb-4"><v-img :src="bus.image" :alt="bus.title" height="150" class="bus-photo" gradient="to bottom, rgba(0,0,0,.05), rgba(0,0,0,.22)" /><span class="bus-badge">{{ bus.capacity }}</span></div><h3 class="text-h6 font-weight-bold">{{ bus.title }}</h3><p class="grey--text body-2">{{ bus.description }}</p><div class="d-flex flex-wrap"><v-chip v-for="feature in bus.features" :key="feature" small class="mr-2 mb-2">{{ feature }}</v-chip></div></v-card></v-col></v-row>
 
-    <v-card flat class="steps-card pa-6 pa-md-7"><h2 class="text-h5 font-weight-bold mb-6">Pesan bus dalam 3 langkah</h2><v-row><v-col v-for="(step,index) in steps" :key="step.title" cols="12" md="4" class="d-flex"><div class="step-number mr-4">{{ index+1 }}</div><div><h3 class="font-weight-bold mb-1">{{ step.title }}</h3><p class="grey--text body-2 mb-0">{{ step.text }}</p></div></v-col></v-row></v-card>
+    <v-card flat class="steps-card pa-6 pa-md-7"><h2 class="text-h5 font-weight-bold mb-6">Pesan bus dalam 2 langkah</h2><v-row><v-col v-for="(step,index) in steps" :key="step.title" cols="12" md="6" class="d-flex"><div class="step-number mr-4">{{ index+1 }}</div><div><h3 class="font-weight-bold mb-1">{{ step.title }}</h3><p class="grey--text body-2 mb-0">{{ step.text }}</p></div></v-col></v-row></v-card>
   </div>
 </template>
 <script>
 export default {
   data: () => ({
     bookingStats: { active: 0, waiting: 0, completed: 0 },
-    buses:[{title:'Medium Bus',capacity:'25-35 kursi',color:'#7c3aed',image:'https://images.pexels.com/photos/19517915/pexels-photo-19517915.jpeg?auto=compress&cs=tinysrgb&w=900',description:'Lincah dan nyaman untuk rombongan sedang.',features:['AC','Reclining seat','Audio']},{title:'Large Bus',capacity:'45-59 kursi',color:'#2563eb',image:'https://images.pexels.com/photos/18029643/pexels-photo-18029643.jpeg?auto=compress&cs=tinysrgb&w=900',description:'Kapasitas besar untuk study tour dan gathering.',features:['AC','Bagasi luas','TV']},{title:'Luxury Bus',capacity:'18-32 kursi',color:'#d97706',image:'https://images.pexels.com/photos/29702987/pexels-photo-29702987.jpeg?auto=compress&cs=tinysrgb&w=900',description:'Pengalaman premium dengan fasilitas terbaik.',features:['Leg rest','USB charger','Kursi premium']}],
-    steps:[{title:'Isi rencana perjalanan',text:'Tentukan lokasi, tujuan, tanggal, dan jumlah peserta.'},{title:'Terima penawaran',text:'Admin memeriksa armada dan mengirim rincian harga.'},{title:'Konfirmasi & berangkat',text:'Setujui penawaran lalu pantau status perjalanan Anda.'}],
+    buses:[{title:'Mini Bus',capacity:'25-35 kursi',color:'#7c3aed',image:'https://images.pexels.com/photos/19517915/pexels-photo-19517915.jpeg?auto=compress&cs=tinysrgb&w=900',description:'Lincah dan nyaman untuk rombongan sedang.',features:['AC','Reclining seat','Audio']},{title:'Large Bus',capacity:'45-59 kursi',color:'#2563eb',image:'https://images.pexels.com/photos/18029643/pexels-photo-18029643.jpeg?auto=compress&cs=tinysrgb&w=900',description:'Kapasitas besar untuk study tour dan gathering.',features:['AC','Bagasi luas','TV']},{title:'Luxury Bus',capacity:'18-32 kursi',color:'#d97706',image:'https://images.pexels.com/photos/29702987/pexels-photo-29702987.jpeg?auto=compress&cs=tinysrgb&w=900',description:'Pengalaman premium dengan fasilitas terbaik.',features:['Leg rest','USB charger','Kursi premium']}],
+    steps:[{title:'Detail perjalanan',text:'Pilih bus, isi data pergi, lalu lengkapi data pulang.'},{title:'Konfirmasi',text:'Periksa rincian dan harga dasar bus, lalu kirim pemesanan.'}],
   }),
   computed: {
     stats() {

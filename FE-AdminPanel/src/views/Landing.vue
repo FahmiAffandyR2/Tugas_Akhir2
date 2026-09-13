@@ -4,7 +4,7 @@
     <nav :class="['navbar', { scrolled: scrolled }]">
       <div class="nav-container">
         <div class="nav-brand">
-          <v-icon color="primary" size="28">mdi-bus</v-icon>
+          <v-icon :color="scrolled ? 'primary' : 'white'" size="28">mdi-bus</v-icon>
           <span class="brand-text">EZBus</span>
         </div>
         <div class="nav-links">
@@ -13,7 +13,8 @@
           <a href="#kontak" @click.prevent="scrollTo('kontak')">Hubungi Kami</a>
         </div>
         <div class="nav-actions">
-          <v-btn text color="primary" to="/login">Masuk</v-btn>
+          <v-btn color="primary" depressed to="/customer/pesan">Pesan Bus</v-btn>
+          <v-btn text :color="scrolled ? 'primary' : 'white'" to="/login">Masuk</v-btn>
           <v-btn color="primary" depressed to="/customer/register" class="d-none d-sm-flex">Daftar</v-btn>
         </div>
         <v-btn icon class="d-flex d-sm-none" @click="mobileMenu = !mobileMenu">
@@ -34,6 +35,9 @@
     <!-- HERO -->
     <section id="beranda" class="hero">
       <div class="hero-content">
+        <div class="hero-booking-action">
+          <v-btn color="white" class="primary--text" to="/customer/pesan"><v-icon left>mdi-bus</v-icon>Pesan Bus</v-btn>
+        </div>
         <div class="hero-text">
           <v-chip color="rgba(255,255,255,0.2)" text-color="white" small class="mb-4">
             <v-icon left small>mdi-shield-check</v-icon>Terpercaya & Aman
@@ -41,9 +45,6 @@
           <h1>Perjalanan Rombongan<br>Jadi <span class="highlight">Lebih Mudah</span></h1>
           <p class="hero-subtitle">Sewa bus pariwisata terbaik untuk rombongan Anda. Armada lengkap, harga transparan, dan live tracking real-time.</p>
           <div class="hero-actions">
-            <v-btn color="white" large depressed to="/customer/register" class="cta-btn">
-              <v-icon left>mdi-bus</v-icon>Pesan Bus Sekarang
-            </v-btn>
             <v-btn outlined large dark color="white" href="#armada" @click.prevent="scrollTo('armada')">
               Lihat Armada
             </v-btn>
@@ -63,11 +64,6 @@
               <strong>24/7</strong>
               <span>Live Tracking</span>
             </div>
-          </div>
-        </div>
-        <div class="hero-visual d-none d-md-flex">
-          <div class="hero-bus-icon">
-            <v-icon size="120" color="white">mdi-bus-side</v-icon>
           </div>
         </div>
       </div>
@@ -117,11 +113,7 @@
                   </div>
                 </div>
               </v-card-text>
-              <v-card-actions class="pa-4 pt-0">
-                <v-btn color="primary" block depressed to="/customer/register">
-                  Pesan Sekarang
-                </v-btn>
-              </v-card-actions>
+
             </v-card>
           </v-col>
         </v-row>
@@ -167,6 +159,7 @@
 </template>
 
 <script>
+import axios from 'axios'
 export default {
   data: () => ({
     scrolled: false,
@@ -207,7 +200,7 @@ export default {
     async fetchBusTypes() {
       this.loading = true;
       try {
-        const response = await axios.get('/charter-bookings/options');
+        const response = await axios.get('/booking-options');
         const types = response.data.bus_types || [];
         this.busTypes = types
           .filter(bt => bt.is_available !== false)
@@ -276,6 +269,7 @@ export default {
 .navbar.scrolled .brand-text {
   color: #6f36d8;
 }
+.navbar:not(.scrolled) .brand-text { color: white; }
 
 .nav-links {
   display: flex;
@@ -324,7 +318,7 @@ export default {
   background: linear-gradient(135deg, #7c3aed 0%, #6f36d8 50%, #5b21b6 100%);
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   position: relative;
   overflow: hidden;
   padding-top: 80px;
@@ -357,9 +351,11 @@ export default {
   margin: 0 auto;
   padding: 60px 24px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 60px;
+  gap: 40px;
+  width: 100%;
   position: relative;
   z-index: 1;
 }
@@ -430,6 +426,7 @@ export default {
   background: rgba(255,255,255,0.2);
 }
 
+.hero-booking-action { align-self: flex-end; }
 .hero-visual {
   flex: 0 0 auto;
 }
@@ -619,8 +616,9 @@ export default {
 
   .hero-content {
     flex-direction: column;
-    text-align: center;
+    text-align: left;
     padding: 40px 24px;
+    align-items: stretch;
   }
 
   .hero-actions {

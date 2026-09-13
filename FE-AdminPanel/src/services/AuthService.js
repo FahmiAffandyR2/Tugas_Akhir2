@@ -2,6 +2,7 @@ import axios from "axios";
 
 import firebase, { isFirebaseEnabled } from '@/firebaseConfig';
 import { Keys } from '@/config';
+import { beginGoogleOAuth, consumeGoogleOAuth } from '@/utils/googleOAuthState';
 import Router from '../router/index'
 
 const passwordLoginEndpoint = '/auth/login'
@@ -178,11 +179,7 @@ export default {
     const clientId = Keys.GOOGLE_CLIENT_ID
     const redirectUri = window.location.origin + '/auth/google/callback'
     const scope = 'email profile openid'
-    const state = JSON.stringify({ portal })
-    const nonce = Math.random().toString(36).substring(2)
-
-    localStorage.setItem('googleOAuthState', state)
-    localStorage.setItem('googleOAuthNonce', nonce)
+    const state = beginGoogleOAuth(portal)
 
     const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth'
       + '?client_id=' + encodeURIComponent(clientId)
@@ -190,14 +187,19 @@ export default {
       + '&response_type=code'
       + '&scope=' + encodeURIComponent(scope)
       + '&state=' + encodeURIComponent(state)
-      + '&nonce=' + encodeURIComponent(nonce)
       + '&prompt=select_account'
 
     window.location.href = authUrl
     return 'redirecting'
   },
   async handleGoogleCallback(code, state) {
-    const portal = (JSON.parse(state || '{}').portal) || 'all'
+    let portal
+    try {
+      portal = consumeGoogleOAuth(state)
+      if (!code || typeof code !== 'string') throw new Error('Kode login Google tidak valid.')
+    } catch (error) {
+      return { success: false, message: error.message }
+    }
     try {
       const response = await axios.post('/auth/google-login', {
         code,

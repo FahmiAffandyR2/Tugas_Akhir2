@@ -92,7 +92,7 @@
             <v-col cols="12" sm="6">
               <div class="label">Rute perjalanan</div>
               <strong>{{ areaName(selected.origin_area) }} - {{ areaName(selected.destination_area) }}</strong>
-              <div>{{ selected.origin }} - {{ selected.destination }}</div>
+              <div>{{ selected.origin }} - {{ selected.destination }}</div><ol v-if="selected.destinations"><li v-for="(stop, i) in selected.destinations" :key="i">{{ stop.address }}</li></ol>
             </v-col>
             <v-col cols="6" sm="3">
               <div class="label">Berangkat</div>
@@ -103,7 +103,7 @@
               <strong>{{ selected.return_date ? `${formatDate(selected.return_date)} ${selected.return_time ? selected.return_time.slice(0, 5) : ''}` : '-' }}</strong>
             </v-col>
             <v-col cols="6" sm="3">
-              <div class="label">Peserta</div>
+              <div class="label">{{ selected.price_breakdown && selected.price_breakdown.booking_mode === 'whole_bus' ? 'Kapasitas dipesan' : 'Peserta' }}</div>
               <strong>{{ selected.passenger_count }} orang</strong>
             </v-col>
             <v-col cols="6" sm="3">
@@ -160,6 +160,7 @@
 
           <v-divider class="my-5" />
 
+          <div v-if="selected.price_breakdown" class="mb-4">Harga Dasar Bus: <strong>{{ currency(selected.price_breakdown.base_price) }}</strong></div>
           <v-form ref="form" v-model="valid">
             <v-row>
               <v-col cols="12" sm="6">
@@ -171,7 +172,7 @@
                   label="Harga otomatis (IDR)"
                   prepend-inner-icon="mdi-cash"
                   readonly
-                  hint="Dihitung dari tipe bus, estimasi jarak, dan jumlah unit"
+                  :hint="selected.payment_status === 'paid' ? 'Pembayaran lunas' : 'Dihitung dari tipe bus, estimasi jarak, dan jumlah unit'"
                   persistent-hint
                 />
               </v-col>

@@ -196,6 +196,7 @@ class CustomerTrackingController extends Controller
             'departure_time' => $booking->departure_time,
             'passenger_count' => $booking->passenger_count,
             'status' => $booking->status,
+            'payment_status' => $booking->payment_status,
             'bus' => $busInfo,
             'driver' => $driverInfo,
             'bus_type' => $booking->busType ? $booking->busType->name : $booking->bus_type,

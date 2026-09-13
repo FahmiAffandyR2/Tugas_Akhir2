@@ -6,6 +6,12 @@ Vue.use(VueRouter)
 
 const routes = [
   {
+    path: '/staff/dashboard',
+    name: 'staff-dashboard',
+    component: () => import('@/views/staff/Dashboard.vue'),
+    meta: { layout: 'staff', staffOnly: true },
+  },
+  {
     path: '/',
     name: 'landing',
     component: () => import('@/views/Landing.vue'),
@@ -60,9 +66,7 @@ const routes = [
   },
   {
     path: '/customer/perjalanan',
-    name: 'customer-live-tracking',
-    component: () => import('@/views/customer/LiveTracking.vue'),
-    meta: { layout: 'customer', customerOnly: true },
+    redirect: '/customer/pemesanan',
   },
   {
     path: '/dashboard',
@@ -407,6 +411,7 @@ const router = new VueRouter({
 
 // array of routes that do not require auth
 const plainRoutes = [
+    "/auth/google/callback",
     "/",
     "/home",
     "/login",
@@ -458,6 +463,8 @@ router.beforeEach((to, from, next) => {
     }
 
     const role = Number(localStorage.getItem('internalRole') || localStorage.getItem('userRole'));
+    if (role === 3 && !to.meta.staffOnly) return next('/staff/dashboard');
+    if (to.meta.staffOnly && role !== 3) return next(role === 2 ? '/driver/beranda' : '/dashboard');
     if (role === 2 && !to.meta.driverOnly) return next('/driver/beranda');
     if (to.meta.driverOnly && role !== 2) return next('/dashboard');
     if (!to.meta.driverOnly && role !== 0 && role !== 3) return next('/driver/beranda');

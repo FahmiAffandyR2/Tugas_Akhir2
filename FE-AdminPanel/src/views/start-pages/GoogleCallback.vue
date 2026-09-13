@@ -45,7 +45,7 @@ export default {
         this.message = 'Mengalihkan ke dashboard...'
         setTimeout(() => {
           const role = Number(localStorage.getItem('internalRole') || localStorage.getItem('customerRole'))
-          const dest = role === 1 ? '/customer/beranda' : role === 2 ? '/driver/beranda' : '/dashboard'
+          const dest = role === 1 ? (sessionStorage.getItem('busBookingDraft') ? '/customer/pesan' : '/customer/beranda') : role === 2 ? '/driver/beranda' : '/dashboard'
           this.$router.push(dest).catch(() => {})
         }, 1000)
       } else {

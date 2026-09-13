@@ -18,6 +18,7 @@ class CharterBooking extends Model
         'unit_price' => 'decimal:2',
         'distance_km' => 'decimal:2',
         'price_breakdown' => 'array',
+        'destinations' => 'array',
         'passenger_count' => 'integer',
         'requested_bus_count' => 'integer',
         'payment_submitted_at' => 'datetime',
@@ -27,6 +28,18 @@ class CharterBooking extends Model
     ];
 
     protected $hidden = ['payment_proof_path'];
+
+    public function scopeForDepot($query, $depotId)
+    {
+        if (!$depotId) {
+            return $query->whereRaw('1 = 0');
+        }
+        return $query->where(function ($query) use ($depotId) {
+            $query->where('depot_id', $depotId)
+                ->orWhereHas('bus', fn ($bus) => $bus->where('depot_id', $depotId))
+                ->orWhereHas('assignments.bus', fn ($bus) => $bus->where('depot_id', $depotId));
+        });
+    }
 
     public function customer()
     {

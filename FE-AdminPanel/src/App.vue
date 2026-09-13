@@ -16,6 +16,7 @@ import LayoutBlank from '@/layouts/Blank.vue'
 import LayoutContent from '@/layouts/Content.vue'
 import LayoutDriver from '@/layouts/Driver.vue'
 import LayoutCustomer from '@/layouts/Customer.vue'
+import LayoutStaff from '@/layouts/Staff.vue'
 import PwaInstallPrompt from '@/components/PwaInstallPrompt.vue'
 import AuthService from '@/services/AuthService'
 
@@ -25,6 +26,7 @@ export default {
     LayoutContent,
     LayoutDriver,
     LayoutCustomer,
+    LayoutStaff,
     PwaInstallPrompt,
   },
   setup() {
@@ -37,6 +39,7 @@ export default {
       if (route.value.meta.layout === 'blank') return 'layout-blank'
       if (route.value.meta.layout === 'driver') return 'layout-driver'
       if (route.value.meta.layout === 'customer') return 'layout-customer'
+      if (route.value.meta.layout === 'staff') return 'layout-staff'
 
       return 'layout-content'
     })

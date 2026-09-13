@@ -4,7 +4,7 @@
       <v-row no-gutters>
         <v-col cols="12" md="6" class="hero-panel pa-8 pa-md-12 d-none d-md-flex flex-column justify-space-between">
           <div><div class="d-flex align-center mb-10"><v-img :src="require('@/assets/images/logos/logo.png')" max-width="44" class="mr-3"/><span class="text-h6 font-weight-bold">Bus Pariwisata</span></div><h1 class="text-h3 font-weight-bold mb-5">Perjalanan rombongan jadi lebih mudah.</h1><p class="text-h6 hero-copy">Rencanakan study tour, gathering, dan perjalanan wisata dalam satu tempat.</p></div>
-          <div class="d-flex"><v-chip outlined dark class="mr-2"><v-icon left small>mdi-bus</v-icon>Armada pilihan</v-chip><v-chip outlined dark><v-icon left small>mdi-map-marker-path</v-icon>Live tracking</v-chip></div>
+          <div class="d-flex"><v-chip outlined dark class="mr-2"><v-icon left small>mdi-bus</v-icon>Armada pilihan</v-chip></div>
         </v-col>
         <v-col cols="12" md="6" class="pa-7 pa-sm-10 pa-md-12">
           <div class="d-flex align-center d-md-none mb-8"><v-img :src="require('@/assets/images/logos/logo.png')" max-width="40" class="mr-3"/><span class="text-h6 font-weight-bold">Portal Customer</span></div>

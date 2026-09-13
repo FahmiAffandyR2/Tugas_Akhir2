@@ -6,6 +6,9 @@ use App\Http\Controllers\TokenController;
 
 use App\Http\Controllers\Api;
 
+// Public catalogue for the booking form; creating a booking still requires a customer session.
+Route::get('/booking-options', [Api\CharterBookingController::class, 'options']);
+
 /*
 |--------------------------------------------------------------------------
 | API Routes

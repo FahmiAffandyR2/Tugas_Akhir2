@@ -28,7 +28,10 @@
       <v-btn icon class="mr-1" to="/customer/pemesanan"><v-icon>mdi-bell-outline</v-icon></v-btn>
       <v-menu offset-y left>
         <template #activator="{ on, attrs }"><v-btn text rounded v-bind="attrs" v-on="on"><v-avatar color="deep-purple lighten-5" size="34" class="mr-sm-2"><v-icon color="primary">mdi-account</v-icon></v-avatar><span class="d-none d-sm-inline text-capitalize">{{ customerName }}</span><v-icon small>mdi-chevron-down</v-icon></v-btn></template>
-        <v-list min-width="190"><v-list-item @click="logout"><v-list-item-icon><v-icon color="error">mdi-logout</v-icon></v-list-item-icon><v-list-item-title>Keluar</v-list-item-title></v-list-item></v-list>
+        <v-list min-width="190">
+          <v-list-item to="/customer/profil"><v-list-item-icon><v-icon>mdi-account-outline</v-icon></v-list-item-icon><v-list-item-title>Profil Saya</v-list-item-title></v-list-item>
+          <v-list-item @click="logout"><v-list-item-icon><v-icon color="error">mdi-logout</v-icon></v-list-item-icon><v-list-item-title>Keluar</v-list-item-title></v-list-item>
+        </v-list>
       </v-menu>
     </v-app-bar>
     <v-main><v-container class="customer-container pa-4 pa-md-8"><slot /></v-container></v-main>
@@ -50,11 +53,9 @@ export default {
     customerName: 'Customer',
     menus: [
       { title: 'Beranda', mobileTitle: 'Beranda', icon: 'mdi-view-dashboard-outline', to: '/customer/beranda' },
+      { title: 'Pesan Bus', mobileTitle: 'Pesan Bus', icon: 'mdi-bus', to: '/customer/pesan' },
       { title: 'Tempat Wisata', mobileTitle: 'Wisata', icon: 'mdi-palm-tree', to: '/customer/wisata' },
-      { title: 'Pesan Bus', mobileTitle: 'Pesan', icon: 'mdi-bus-marker', to: '/customer/pesan' },
       { title: 'Pemesanan Saya', mobileTitle: 'Pesanan', icon: 'mdi-clipboard-text-clock-outline', to: '/customer/pemesanan' },
-      { title: 'Live Tracking', mobileTitle: 'Tracking', icon: 'mdi-map-marker-radius', to: '/customer/perjalanan' },
-      { title: 'Profil Saya', mobileTitle: 'Profil', icon: 'mdi-account-outline', to: '/customer/profil' },
     ],
   }),
   computed: {

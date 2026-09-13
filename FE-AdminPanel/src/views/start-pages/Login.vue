@@ -147,7 +147,7 @@ export default {
     redirectAfterLogin() {
       const role = Number(localStorage.getItem('internalRole') || localStorage.getItem('customerRole') || localStorage.getItem('userRole'))
       const destination = role === 1
-        ? '/customer/beranda'
+        ? (sessionStorage.getItem('busBookingDraft') ? '/customer/pesan' : '/customer/beranda')
         : role === 2
           ? '/driver/beranda'
           : (this.$router.currentRoute.query.to || '/dashboard')

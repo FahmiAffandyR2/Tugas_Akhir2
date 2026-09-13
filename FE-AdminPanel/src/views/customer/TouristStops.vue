@@ -1,6 +1,9 @@
 <template>
   <div>
     <section class="customer-hero pa-6 pa-md-9 mb-7">
+      <div class="d-flex justify-end mb-4">
+        <v-btn color="white" class="primary--text" to="/customer/pesan"><v-icon left>mdi-bus</v-icon>Pesan Bus</v-btn>
+      </div>
       <v-row align="center">
         <v-col cols="12" md="7">
           <div class="hero-label mb-3">
