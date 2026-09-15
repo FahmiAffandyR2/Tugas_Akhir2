@@ -27,9 +27,18 @@
       <v-app-bar-nav-icon class="d-lg-none" @click="drawer = !drawer" />
       <div class="d-none d-sm-block"><div class="font-weight-bold">Area Driver</div><small class="muted">{{ today }}</small></div>
       <v-spacer />
-      <v-chip small :color="online ? 'success' : 'grey'" outlined class="mr-3 d-none d-sm-flex"><v-icon left small>mdi-wifi</v-icon>{{ online ? 'Online' : 'Offline' }}</v-chip>
-      <v-avatar color="primary" size="38" class="mr-2"><span class="white--text font-weight-bold">{{ initials }}</span></v-avatar>
-      <div class="d-none d-sm-block"><div class="text-body-2 font-weight-bold">{{ userName }}</div><small class="muted">Driver</small></div>
+      <v-menu offset-y left>
+        <template #activator="{ on, attrs }">
+          <v-btn text rounded class="text-none" aria-label="Menu akun driver" v-bind="attrs" v-on="on">
+            <v-avatar color="primary" size="38" class="mr-2"><span class="white--text font-weight-bold">{{ initials }}</span></v-avatar>
+            <span class="d-none d-sm-block text-left"><span class="d-block text-body-2 font-weight-bold">{{ userName }}</span><small class="muted">Driver</small></span>
+            <v-icon small class="ml-2">mdi-chevron-down</v-icon>
+          </v-btn>
+        </template>
+        <v-list min-width="190">
+          <v-list-item to="/driver/profil"><v-list-item-icon><v-icon>mdi-account-outline</v-icon></v-list-item-icon><v-list-item-title>Profil Saya</v-list-item-title></v-list-item>
+        </v-list>
+      </v-menu>
     </v-app-bar>
 
     <v-main><v-container class="driver-container py-6 py-md-8"><slot /></v-container></v-main>
@@ -52,7 +61,6 @@ export default {
       { title: 'Jadwal Saya', mobileTitle: 'Jadwal', icon: 'mdi-calendar-clock', to: '/driver/jadwal' },
       { title: 'Perjalanan Aktif', mobileTitle: 'Aktif', icon: 'mdi-map-marker-path', to: '/driver/perjalanan' },
       { title: 'Riwayat Perjalanan', mobileTitle: 'Riwayat', icon: 'mdi-history', to: '/driver/riwayat' },
-      { title: 'Profil Saya', mobileTitle: 'Profil', icon: 'mdi-account-outline', to: '/driver/profil' },
     ],
   }),
   computed: {

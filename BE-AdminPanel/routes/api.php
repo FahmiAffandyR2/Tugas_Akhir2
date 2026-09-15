@@ -203,6 +203,10 @@ Route::group(['prefix' => 'notifications'], function () {
 });
 
 Route::group(['prefix' => 'drivers'], function() {
+  Route::get('/readiness', [Api\DriverReadinessController::class, 'show'])->middleware(['auth:sanctum', 'driver']);
+  Route::post('/readiness', [Api\DriverReadinessController::class, 'save'])->middleware(['auth:sanctum', 'driver']);
+  Route::get('/{driver}/readiness', [Api\DriverReadinessController::class, 'show'])->middleware(['auth:sanctum', 'admin']);
+  Route::get('/{driver}/readiness/documents/{kind}', [Api\DriverReadinessController::class, 'document'])->middleware('auth:sanctum');
   //assign-bus
   Route::post('/assign-bus', [Api\DriverController::class, 'assignBus'])->middleware(['auth:sanctum', 'admin']);
   //un-assign bus

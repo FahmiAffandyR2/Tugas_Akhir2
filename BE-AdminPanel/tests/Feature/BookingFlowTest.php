@@ -120,6 +120,17 @@ class BookingFlowTest extends TestCase
         CharterBooking::withoutEvents(fn () => $this->postJson('/api/charter-bookings', $this->payload('overnight')))->assertCreated();
     }
 
+    public function test_rental_duration_matches_dates_and_is_returned_in_booking(): void
+    {
+        $this->customer();
+        $payload = $this->payload('overnight');
+        $payload['rental_days'] = 3;
+        $this->postJson('/api/charter-bookings', $payload)->assertUnprocessable()->assertJsonValidationErrors('rental_days');
+        $payload['rental_days'] = 2;
+        CharterBooking::withoutEvents(fn () => $this->postJson('/api/charter-bookings', $payload))
+            ->assertCreated()->assertJsonPath('booking.rental_days', 2);
+    }
+
     public function test_booking_accepts_locations_without_service_area_selection(): void
     {
         $this->customer();

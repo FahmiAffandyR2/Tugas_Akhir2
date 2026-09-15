@@ -15,7 +15,7 @@ import AuthService from '@/services/AuthService'
 import { busOptions, draftKey, effectiveReturnDate, validateJourney } from '@/utils/bookingFlow'
 export default {
   components: { BookingJourneyFields },
-  data: () => ({ form: { tripStyle: 'day_trip', busTypeId: null, departureDate: '', departureTime: '', origin: '', destination: '', returnDate: '', returnTime: '' }, items: [], loading: false, error: '', requestId: 0 }),
+  data: () => ({ form: { tripStyle: 'day_trip', rentalDays: null, busTypeId: null, departureDate: '', departureTime: '', origin: '', destination: '', returnDate: '', returnTime: '' }, items: [], loading: false, error: '', requestId: 0 }),
   computed: { dates() { return `${this.form.departureDate}/${effectiveReturnDate(this.form)}` } },
   watch: { dates() { this.load() } },
   created() { this.load() },

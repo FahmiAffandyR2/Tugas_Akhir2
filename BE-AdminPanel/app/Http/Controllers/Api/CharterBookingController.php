@@ -85,6 +85,7 @@ class CharterBookingController extends Controller
             'destinations.*.lng' => 'nullable|required_with:destinations.*.lat|numeric|between:-180,180',
             'trip_type' => ['required', Rule::in(['one_way', 'round_trip'])],
             'trip_style' => ['nullable', Rule::in(['day_trip', 'overnight'])],
+            'rental_days' => 'nullable|integer|min:1|max:365',
             'departure_date' => 'required|date|after_or_equal:today',
             'departure_time' => 'required|date_format:H:i',
             'return_date' => 'nullable|required_if:trip_type,round_trip|date|after_or_equal:departure_date',
@@ -116,7 +117,13 @@ class CharterBookingController extends Controller
                 throw ValidationException::withMessages(['return_date' => 'Day Trip harus pulang di hari yang sama; Menginap harus pulang setelah tanggal berangkat.']);
             }
         }
-        unset($validated['trip_style']);
+        if (isset($validated['rental_days'])) {
+            $expectedReturn = \Carbon\Carbon::parse($validated['departure_date'])->addDays($validated['rental_days'] - 1)->toDateString();
+            if (($validated['return_date'] ?? $validated['departure_date']) !== $expectedReturn) {
+                throw ValidationException::withMessages(['rental_days' => 'Lama penggunaan harus sesuai tanggal berangkat dan pulang.']);
+            }
+        }
+        unset($validated['trip_style'], $validated['rental_days']);
 
         if (($validated['trip_type'] ?? null) === 'round_trip'
             && $validated['return_date'] === $validated['departure_date']
@@ -743,7 +750,7 @@ class CharterBookingController extends Controller
       </div>
       <div class="box">
         <div class="label">Rute perjalanan</div>
-        <div class="value">' . e($booking->origin) . ' - ' . e($booking->destination) . '</div><ol>' . $destinationList . '</ol>
+        <div class="value">' . e($booking->origin) . ' - ' . e($booking->destination) . '</div><ol>' . $destinationList . '</ol><div>Lama penggunaan: ' . e((string) $booking->rental_days) . ' hari</div>
         <div class="muted">Berangkat: ' . e($departureDate) . ' ' . e($booking->departure_time ? substr($booking->departure_time, 0, 5) : '') . '</div>
         <div class="muted">Kembali: ' . e($returnDate) . ' ' . e($booking->return_time ? substr($booking->return_time, 0, 5) : '') . '</div>
       </div>

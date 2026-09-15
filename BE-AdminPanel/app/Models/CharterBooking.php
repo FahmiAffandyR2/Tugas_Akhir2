@@ -28,6 +28,13 @@ class CharterBooking extends Model
     ];
 
     protected $hidden = ['payment_proof_path'];
+    protected $appends = ['rental_days'];
+
+    public function getRentalDaysAttribute(): ?int
+    {
+        if (!$this->departure_date) return null;
+        return $this->return_date ? (int) $this->departure_date->diffInDays($this->return_date) + 1 : 1;
+    }
 
     public function scopeForDepot($query, $depotId)
     {

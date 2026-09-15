@@ -7,10 +7,10 @@
           <v-col cols="12" md="8">
             <div class="eyebrow mb-2">{{ greeting }}, {{ firstName }} 👋</div>
             <h1 class="text-h4 font-weight-bold mb-2">Siap untuk perjalanan hari ini?</h1>
-            <p class="mb-0 welcome-copy">Pastikan kondisi kendaraan, koneksi internet, dan GPS sudah siap sebelum berangkat.</p>
+            <p class="mb-0 welcome-copy">Lengkapi SIM, surat keterangan sehat, dan SKCK serta laporkan kondisi kesehatan Anda sebelum bertugas.</p>
           </v-col>
           <v-col cols="12" md="4" class="text-md-right">
-            <div class="readiness d-inline-flex align-center pa-3"><span class="pulse mr-3"/><div class="text-left"><small>Status bertugas</small><div class="font-weight-bold">Siap Bertugas</div></div></div>
+            <div class="readiness d-inline-flex align-center pa-3" :class="dutyReady ? 'duty-ready' : 'duty-pending'"><v-icon :color="dutyReady ? 'success' : 'warning'" class="mr-3">{{ dutyReady ? 'mdi-check-circle' : 'mdi-alert-circle-outline' }}</v-icon><div class="text-left"><small>Status bertugas</small><div class="font-weight-bold">{{ dutyReady ? 'Siap Bertugas' : 'Belum Siap' }}</div></div></div>
           </v-col>
         </v-row>
       </section>
@@ -47,11 +47,7 @@
 
         <v-col cols="12" lg="4">
           <h2 class="text-h6 font-weight-bold mb-3">Kesiapan perjalanan</h2>
-          <v-card flat class="checklist-card pa-5">
-            <div v-for="item in checklist" :key="item.label" class="check-row d-flex align-center py-3"><div class="check-icon mr-3" :class="item.ready ? 'ready' : 'attention'"><v-icon small :color="item.ready ? 'success' : 'warning'">{{ item.ready ? 'mdi-check' : 'mdi-alert-outline' }}</v-icon></div><div><div class="font-weight-medium">{{ item.label }}</div><small class="muted">{{ item.description }}</small></div></div>
-            <v-divider class="my-3" />
-            <div class="tip pa-4"><v-icon color="primary" class="mr-2">mdi-lightbulb-outline</v-icon><span class="text-body-2">Buka PWA selama perjalanan agar lokasi GPS dapat terkirim secara berkala.</span></div>
-          </v-card>
+          <driver-readiness @readiness="dutyReady = $event" />
         </v-col>
       </v-row>
     </template>
@@ -59,9 +55,11 @@
 </template>
 
 <script>
+import DriverReadiness from '@/components/DriverReadiness.vue'
 import AuthService from '@/services/AuthService'
 export default {
-  data: () => ({ trips: [], loading: true, userName: 'Driver', online: navigator.onLine, gpsReady: false }),
+  components: { DriverReadiness },
+  data: () => ({ trips: [], loading: true, userName: 'Driver', dutyReady: false, gpsReady: false }),
   computed: {
     firstName() { return this.userName.split(' ')[0] },
     greeting() { const h = new Date().getHours(); return h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 18 ? 'Selamat sore' : 'Selamat malam' },
@@ -76,18 +74,12 @@ export default {
       { label: 'Telah selesai', value: this.completedCount, icon: 'mdi-check-circle-outline', color: '#4caf50', bg: '#e8f5e9' },
       { label: 'Total perjalanan', value: this.trips.length, icon: 'mdi-road-variant', color: '#2196f3', bg: '#e8f3fd' },
     ] },
-    checklist() { return [
-      { label: 'Koneksi internet', description: this.online ? 'Perangkat terhubung ke internet' : 'Periksa jaringan perangkat', ready: this.online },
-      { label: 'Akses lokasi GPS', description: this.gpsReady ? 'Izin lokasi sudah tersedia' : 'Izin diminta saat perjalanan dimulai', ready: this.gpsReady },
-      { label: 'Jadwal perjalanan', description: this.featuredTrip ? 'Tugas perjalanan tersedia' : 'Belum ada tugas baru', ready: !!this.featuredTrip },
-    ] },
+
   },
-  created() { this.loadData(); window.addEventListener('online', this.updateOnline); window.addEventListener('offline', this.updateOnline); this.checkGpsPermission() },
-  beforeDestroy() { window.removeEventListener('online', this.updateOnline); window.removeEventListener('offline', this.updateOnline) },
+  created() { this.loadData(); this.checkGpsPermission() },
   methods: {
     async loadData() { this.loading = true; try { const [trips, user] = await Promise.all([axios.get('/drivers/get-driver-trips'), AuthService.getAuthUser()]); this.trips = trips.data.trips || []; this.userName = user.data.data.name } catch (e) { this.$notify({ type: 'error', title: 'Gagal', text: 'Dashboard driver tidak dapat dimuat.' }) } finally { this.loading = false } },
     async checkGpsPermission() { if (!navigator.permissions) return; try { const p = await navigator.permissions.query({ name: 'geolocation' }); this.gpsReady = p.state === 'granted'; p.onchange = () => { this.gpsReady = p.state === 'granted' } } catch (_) {} },
-    updateOnline() { this.online = navigator.onLine },
     routeName(t) { return t.route && t.route.name || `Perjalanan #${t.id}` },
     busName(t) { return t.bus && (t.bus.license || t.bus.name) || 'Belum ditentukan' },
     formatDate(v) { return v ? new Intl.DateTimeFormat('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(`${v}T00:00:00`)) : '-' },
@@ -96,6 +88,8 @@ export default {
 </script>
 
 <style scoped>
+.readiness.duty-ready { background: #e8f5e9; color: #1b5e20; border-color: #a5d6a7; }
+.readiness.duty-pending { background: #fff3e0; color: #8a4b00; border-color: #ffcc80; }
 .welcome-card { color: #fff; border-radius: 20px; background: linear-gradient(125deg, #6f36d8 0%, #9155fd 55%, #b47cff 100%); box-shadow: 0 12px 30px rgba(111,54,216,.22); position: relative; overflow: hidden; }
 .welcome-card:after { content: ''; position: absolute; width: 220px; height: 220px; border: 40px solid rgba(255,255,255,.08); border-radius: 50%; right: -65px; top: -95px; }.welcome-copy { color: rgba(255,255,255,.8); }.eyebrow { color: rgba(255,255,255,.85); font-weight: 600; }.readiness { background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.22); border-radius: 14px; }.pulse { width: 12px; height: 12px; border-radius: 50%; background: #7dff9b; box-shadow: 0 0 0 6px rgba(125,255,155,.15); }
 .h-full { height: 100%; }.stat-card,.next-trip,.empty-card,.checklist-card { border-radius: 16px; border: 1px solid rgba(58,53,65,.07); }.stat-icon,.route-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }.route-icon { background:#f2eaff; }.muted { color:#8a8795; }.next-trip { position:relative; }.trip-accent { height:5px; background:linear-gradient(90deg,#ff9800,#ffc107); }.trip-accent.active { background:linear-gradient(90deg,#4caf50,#7bd77f); }.action-btn { border-radius:10px; text-transform:none; }.empty-illustration { width:140px; height:110px; border-radius:50%; background:#f2eaff; display:flex; align-items:center; justify-content:center; position:relative; }.road-line { position:absolute; width:105px; border-top:3px dashed rgba(145,85,253,.35); bottom:19px; }.empty-copy { max-width:430px; }.check-row+.check-row { border-top:1px solid rgba(58,53,65,.07); }.check-icon { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:0 0 auto; }.check-icon.ready { background:#e8f5e9; }.check-icon.attention { background:#fff3df; }.tip { background:#f6f1ff; border-radius:12px; display:flex; align-items:flex-start; }

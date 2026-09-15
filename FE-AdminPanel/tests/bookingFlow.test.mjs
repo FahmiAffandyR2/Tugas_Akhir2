@@ -89,3 +89,29 @@ test('final bus unit price follows the accepted total and booked quantity', asyn
   const steps = component.methods.bookingSteps.call({ showAssignment: () => false }, booking)
   assert.equal(steps.find(step => step.key === 'quote').text, '')
 })
+
+test('overnight duration determines inclusive return dates across month and year boundaries', () => {
+  assert.equal(flow.effectiveReturnDate({ ...form, tripStyle: 'overnight', departureDate: '2030-12-31', rentalDays: 3 }), '2031-01-02')
+  assert.equal(flow.validateJourney({ ...form, tripStyle: 'overnight', rentalDays: 3 }, '2030-10-01'), '')
+  for (const rentalDays of [null, 1, 2.5, 366]) {
+    assert.ok(flow.validateJourney({ ...form, tripStyle: 'overnight', rentalDays }, '2030-10-01'))
+  }
+  assert.equal(flow.effectiveReturnDate({ ...form, rentalDays: 3 }), form.departureDate)
+})
+
+test('cancelled bookings stop approval and payment progress regardless of old payment status', async () => {
+  const view = await readFile(new URL('../src/views/customer/Bookings.vue', import.meta.url), 'utf8')
+  const script = view.match(/<script>([\s\S]*?)<\/script>/)[1]
+  const component = runInNewContext(script.replace('export default', 'result ='), {})
+  for (const payment_status of ['unpaid', 'pending_verification', 'rejected', 'paid']) {
+    const booking = { status: 'cancelled', payment_status, quoted_price: 3850000, payment_bank_name: 'Bank' }
+    const steps = component.methods.bookingSteps(booking)
+    assert.equal(steps.length, 1)
+    assert.equal(steps[0].title, 'Pemesanan dibatalkan')
+    assert.equal(steps[0].state, 'closed')
+    assert.equal(component.methods.canPay(booking), false)
+    assert.equal(component.methods.canCancelBeforePayment(booking), false)
+    assert.equal(component.methods.isClosedBooking(booking), true)
+  }
+  assert.equal(component.methods.bookingSteps({ status: 'quote_sent', payment_status: 'unpaid', quoted_price: 100 }).length, 3)
+})

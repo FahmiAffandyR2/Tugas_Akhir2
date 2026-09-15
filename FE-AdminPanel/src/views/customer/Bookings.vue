@@ -19,10 +19,12 @@
             <v-icon color="primary">mdi-bus</v-icon>
           </div>
           <div class="flex-grow-1">
+            <div class="booking-header">
+              <div class="booking-header-info">
             <div class="d-flex flex-wrap align-center mb-2">
               <h2 class="text-h6 font-weight-bold mb-0 mr-3">{{ booking.origin }} - {{ booking.destination }}</h2><ol v-if="booking.destinations && booking.destinations.length" class="body-2 mt-2"><li v-for="(stop, i) in booking.destinations" :key="i">{{ stop.address }}</li></ol>
               <v-chip small :color="statusInfo(booking.status).color" dark class="mr-2">{{ statusInfo(booking.status).label }}</v-chip>
-              <v-chip v-if="booking.quoted_price" small :color="paymentInfo(booking.payment_status).color" outlined>
+              <v-chip v-if="booking.quoted_price && (!isClosedBooking(booking) || booking.payment_status === 'paid')" small :color="paymentInfo(booking.payment_status).color" outlined>
                 {{ paymentInfo(booking.payment_status).label }}
               </v-chip>
             </div>
@@ -30,9 +32,14 @@
             <div class="booking-meta">
               <span><v-icon x-small>mdi-calendar</v-icon> {{ formatDate(booking.departure_date) }}</span>
               <span>{{ busName(booking) }}</span>
-              <span>{{ booking.requested_bus_count || 1 }} unit bus</span>
+              <span>{{ booking.requested_bus_count || 1 }} unit bus</span><span v-if="booking.rental_days">{{ booking.rental_days }} hari penggunaan</span>
             </div>
             <div class="caption grey--text mt-1">No. {{ booking.reference_code }}</div>
+              </div>
+              <v-btn v-if="canViewInvoice(booking)" color="primary" outlined class="invoice-button" :loading="openingInvoiceId === booking.id" @click="viewInvoice(booking)">
+                <v-icon left>mdi-file-document-check-outline</v-icon>Lihat Invoice
+              </v-btn>
+            </div>
 
             <div class="progress-track mt-5">
               <div
@@ -60,7 +67,7 @@
               <div class="caption">Estimasi harga sudah dihitung otomatis. Tim admin akan mengecek armada dan melengkapi instruksi pembayaran.</div>
             </v-alert>
 
-            <div v-if="booking.quoted_price" class="quote mt-4 pa-4">
+            <div v-if="booking.quoted_price && (!isClosedBooking(booking) || booking.payment_status === 'paid')" class="quote mt-4 pa-4">
               <span>{{ booking.status === 'waiting_quote' && booking.payment_status !== 'paid' ? 'Estimasi Total Pembayaran' : 'Total Pembayaran' }}</span>
               <strong>{{ currency(booking.quoted_price) }}</strong>
               <small v-if="booking.distance_km && booking.payment_status !== 'paid'">{{ booking.distance_km }} km · {{ booking.requested_bus_count || 1 }} unit</small>
@@ -74,7 +81,7 @@
 
 
 
-            <v-alert v-if="booking.payment_status === 'rejected'" type="error" text dense class="mt-4 mb-0">
+            <v-alert v-if="!isClosedBooking(booking) && booking.payment_status === 'rejected'" type="error" text dense class="mt-4 mb-0">
               Pembayaran ditolak: {{ booking.payment_rejection_reason }}
             </v-alert>
 
@@ -93,13 +100,7 @@
               </v-btn>
             </div>
 
-            <div v-if="canViewInvoice(booking)" class="payment-actions mt-4">
-              <v-btn color="primary" outlined :loading="openingInvoiceId === booking.id" @click="viewInvoice(booking)">
-                <v-icon left>mdi-file-document-check-outline</v-icon>Lihat Invoice
-              </v-btn>
-            </div>
-
-            <v-alert v-else-if="booking.quoted_price && !booking.payment_bank_name && booking.payment_status !== 'paid'" type="info" text dense class="mt-4 mb-0">
+            <v-alert v-if="['waiting_quote', 'quote_sent', 'approved'].includes(booking.status) && booking.quoted_price && !booking.payment_bank_name && booking.payment_status !== 'paid'" type="info" text dense class="mt-4 mb-0">
               Menunggu Admin melengkapi rekening pembayaran.
             </v-alert>
           </div>
@@ -337,7 +338,19 @@ export default {
         this.cancelingId = null;
       }
     },
+    isClosedBooking(booking) {
+      return ['cancelled', 'rejected'].includes(booking.status);
+    },
     bookingSteps(booking) {
+      if (['cancelled', 'rejected'].includes(booking.status)) {
+        return [{
+          key: 'closed',
+          title: booking.status === 'cancelled' ? 'Pemesanan dibatalkan' : 'Pemesanan ditolak',
+          text: 'Proses pemesanan tidak dilanjutkan.',
+          icon: 'mdi-close-circle-outline',
+          state: 'closed',
+        }];
+      }
       const paid = booking.payment_status === 'paid';
       return [
         { key: 'request', title: 'Permintaan diterima', text: 'Rencana perjalanan sudah masuk.', icon: 'mdi-check', state: 'done' },
@@ -411,6 +424,10 @@ export default {
 </script>
 
 <style scoped>
+.booking-header { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
+.booking-header-info { flex: 1 1 300px; min-width: 0; overflow-wrap: anywhere; }
+.invoice-button { flex: 0 0 auto; margin-left: auto; }
+
 .booking-grid {
   display: grid;
   gap: 18px;
@@ -461,6 +478,12 @@ export default {
 .progress-step.done {
   background: #edf8f0;
   color: #276b3f;
+}
+
+.progress-step.closed {
+  grid-column: 1 / -1;
+  background: #f1f1f4;
+  color: #615c6c;
 }
 
 .progress-step.active {

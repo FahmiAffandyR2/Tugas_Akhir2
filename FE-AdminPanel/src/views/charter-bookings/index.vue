@@ -50,8 +50,14 @@
             <small class="grey--text">{{ item.customer.email }}</small>
           </template>
           <template #item.route="{ item }">
-            <div>{{ item.origin }}</div>
-            <small class="grey--text"><v-icon x-small>mdi-arrow-right</v-icon> {{ item.destination }}</small>
+            <div class="route-summary">
+              <div class="route-location" :title="item.origin">{{ shortLocation(item.origin) }}</div>
+              <div class="d-flex align-center grey--text">
+                <v-icon x-small class="mr-1">mdi-arrow-right</v-icon>
+                <small class="route-location" :title="item.destination">{{ shortLocation(item.destination) }}</small>
+              </div>
+              <small v-if="item.destinations && item.destinations.length > 1" class="grey--text">{{ item.destinations.length }} titik tujuan</small>
+            </div>
           </template>
           <template #item.departure_date="{ item }">{{ formatDate(item.departure_date) }}</template>
           <template #item.bus_type="{ item }">
@@ -90,7 +96,7 @@
         <v-card-text class="pa-6">
           <v-row>
             <v-col cols="12" sm="6">
-              <div class="label">Rute perjalanan</div>
+              <div class="label">Rute perjalanan</div><div v-if="selected.rental_days">Lama penggunaan: {{ selected.rental_days }} hari</div>
               <strong>{{ areaName(selected.origin_area) }} - {{ areaName(selected.destination_area) }}</strong>
               <div>{{ selected.origin }} - {{ selected.destination }}</div><ol v-if="selected.destinations"><li v-for="(stop, i) in selected.destinations" :key="i">{{ stop.address }}</li></ol>
             </v-col>
@@ -325,7 +331,7 @@ export default {
     headers: [
       { text: 'No. Booking', value: 'reference_code' },
       { text: 'Customer', value: 'customer' },
-      { text: 'Rute', value: 'route' },
+      { text: 'Rute', value: 'route', width: '240px' },
       { text: 'Berangkat', value: 'departure_date' },
       { text: 'Armada', value: 'bus_type' },
       { text: 'Penawaran', value: 'quoted_price' },
@@ -391,6 +397,13 @@ export default {
     this.loadAssignmentOptions();
   },
   methods: {
+    shortLocation(address) {
+      const value = String(address || '').trim();
+      if (!value) return '-';
+      // Keep coordinate-only locations intact; otherwise show the place name.
+      if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(value)) return value;
+      return value.split(',').find(part => part.trim())?.trim() || value;
+    },
     async loadBookings() {
       this.loading = true;
       try {
@@ -592,6 +605,8 @@ export default {
 </script>
 
 <style scoped>
+.route-summary { width: 208px; max-width: 100%; padding: 8px 0; }
+.route-location { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .booking-card {
   border-radius: 14px;
 }

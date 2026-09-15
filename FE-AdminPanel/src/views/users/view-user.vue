@@ -201,6 +201,11 @@
       </v-card-text>
     </v-card>
 
+    <section v-if="Number(user.role) === 2" class="mt-5">
+      <h2 class="text-h6 font-weight-bold mb-3">Kesiapan perjalanan driver</h2>
+      <driver-readiness :driver-id="user.id" readonly />
+    </section>
+
     <!-- Approve or Reject Driver -->
     <v-card v-if="user.role == 2 && user.status_id == 4" class="mt-5">
       <v-card-title>
@@ -238,12 +243,14 @@
 
 <script>
 
+import DriverReadiness from '@/components/DriverReadiness.vue'
 import AvatarImageComponent from '../../components/AvatarImageComponent.vue'
 import {Keys} from '/src/config.js'
 
 export default {
   components: {
     AvatarImageComponent,
+    DriverReadiness,
     Keys
   },
 

@@ -56,7 +56,7 @@
         <v-stepper-content step="2">
           <h2 class="text-h6 font-weight-bold mb-5">Periksa kembali pemesanan</h2>
           <v-card flat class="summary pa-5"><v-row>
-            <v-col cols="12" md="6"><div class="summary-label">Jenis perjalanan</div>{{ form.tripStyle === 'day_trip' ? 'Day Trip' : 'Menginap' }}</v-col>
+            <v-col cols="12" md="6"><div class="summary-label">Jenis perjalanan</div>{{ form.tripStyle === 'day_trip' ? 'Day Trip' : 'Menginap' }}<div>Lama penggunaan: {{ form.tripStyle === 'overnight' ? form.rentalDays : 1 }} hari</div></v-col>
             <v-col cols="12" md="6"><div class="summary-label">Bus pilihan</div>{{ selectedBusType.name }} · 1 unit</v-col>
             <v-col cols="12" md="6"><div class="summary-label">Data Pergi</div><strong>{{ form.origin }}</strong><div>{{ formattedDeparture }}</div></v-col>
             <v-col cols="12" md="6"><div class="summary-label">Data Pulang</div><div>{{ formattedReturn }}</div></v-col>
@@ -117,6 +117,7 @@ export default {
     form: {
       tripType: 'round_trip',
       tripStyle: 'day_trip',
+      rentalDays: null,
       origin: '',
       destination: '',
       destinations: [{ address: '', lat: null, lng: null }],
@@ -170,7 +171,7 @@ export default {
   created() {
     try {
       const draft = JSON.parse(sessionStorage.getItem(draftKey) || 'null');
-      if (draft) ['tripStyle', 'busTypeId', 'departureDate', 'departureTime', 'origin', 'destination', 'returnDate', 'returnTime'].forEach(key => { if (draft[key] !== undefined) this.form[key] = draft[key]; });
+      if (draft) ['tripStyle', 'rentalDays', 'busTypeId', 'departureDate', 'departureTime', 'origin', 'destination', 'returnDate', 'returnTime'].forEach(key => { if (draft[key] !== undefined) this.form[key] = draft[key]; });
     } catch (_) { sessionStorage.removeItem(draftKey); }
     if (this.form.destination) this.form.destinations = [{ address: this.form.destination, lat: null, lng: null }];
     this.loadOptions();
@@ -266,6 +267,7 @@ export default {
           destinations: this.form.destinations.map(({ address, lat, lng }) => ({ address, lat, lng })),
           trip_type: 'round_trip',
           trip_style: this.form.tripStyle,
+          rental_days: this.form.tripStyle === 'overnight' ? Number(this.form.rentalDays) : 1,
           departure_date: this.form.departureDate,
           departure_time: this.form.departureTime,
           return_date: effectiveReturnDate(this.form),

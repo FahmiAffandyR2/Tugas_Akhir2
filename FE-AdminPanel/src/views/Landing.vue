@@ -35,9 +35,6 @@
     <!-- HERO -->
     <section id="beranda" class="hero">
       <div class="hero-content">
-        <div class="hero-booking-action">
-          <v-btn color="white" class="primary--text" to="/customer/pesan"><v-icon left>mdi-bus</v-icon>Pesan Bus</v-btn>
-        </div>
         <div class="hero-text">
           <v-chip color="rgba(255,255,255,0.2)" text-color="white" small class="mb-4">
             <v-icon left small>mdi-shield-check</v-icon>Terpercaya & Aman
@@ -426,7 +423,6 @@ export default {
   background: rgba(255,255,255,0.2);
 }
 
-.hero-booking-action { align-self: flex-end; }
 .hero-visual {
   flex: 0 0 auto;
 }
