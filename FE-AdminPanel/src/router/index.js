@@ -234,6 +234,7 @@ const routes = [
     name: 'reservations',
     component: () => import('@/views/reservations/index.vue'),
   },
+  { path: '/jadwal-mingguan', name: 'weekly-schedule', component: () => import('@/views/charter-bookings/WeeklySchedule.vue') },
   {
     path: '/charter-bookings',
     name: 'charter-bookings',

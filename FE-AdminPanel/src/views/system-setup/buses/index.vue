@@ -25,20 +25,6 @@
             class="mx-4"
           ></v-text-field>
         </template>
-        <template v-slot:item.driver="{ item }">
-          <div>
-            <v-chip :color="getDriverAssignmentColor(item.driver)" dark @click="assignDriver(item)">
-              {{ getDriver(item.driver) }}
-            </v-chip>
-            <div v-if="item.driver && item.driver.status_id == 3" class="mt-1">
-              <v-alert type="warning" dense text class="mb-0" style="font-size:11px;">
-                Ditangguhkan{{ item.driver.suspended_until ? ' sampai ' + formatSuspendedUntil(item.driver.suspended_until) : '' }}
-                <br v-if="item.driver.suspension_reason" />
-                <small v-if="item.driver.suspension_reason">Alasan: {{ item.driver.suspension_reason }}</small>
-              </v-alert>
-            </div>
-          </div>
-        </template>
         <template v-slot:item.depot="{ item }">
           <v-chip v-if="item.depot" small color="purple lighten-5" text-color="primary"><v-icon left x-small>mdi-garage-variant</v-icon>{{ item.depot.name }}</v-chip>
           <span v-else class="grey--text">Belum ditentukan</span>
@@ -48,12 +34,6 @@
           <small class="text-muted">{{ item.created_at | moment("LT") }}</small>
         </template>
         <template v-slot:item.actions="{ item }">
-          <v-icon v-if="item.driver" small class="mr-2" @click="unAssignDriver(item)">
-            mdi-account-off
-          </v-icon>
-          <v-icon v-else small class="mr-2" @click="assignDriver(item)">
-            mdi-account-tie-hat
-          </v-icon>
           <v-icon small class="mr-2" @click="editBus(item)">
             mdi-pencil
           </v-icon>
@@ -186,59 +166,7 @@
         </v-form>
       </v-dialog>
     </v-row>
-    <v-dialog v-if="selectedBus" v-model="driversDialog" max-width="390">
-      <v-card>
-        <v-card-title class="text-h5"> Select driver for '{{ selectedBus.license}}' </v-card-title>
 
-        <v-card-text>
-          <v-list dense>
-            <v-subheader>Drivers</v-subheader>
-            <v-list-item-group>
-              <v-list-item
-                v-for="(driver, i) in availableDrivers"
-                :key="i"
-              >
-                <v-list-item-content>
-                  <v-list-item-title v-text="driver.name" @click="assignDriverToBus(driver)"></v-list-item-title>
-                </v-list-item-content>
-              </v-list-item>
-            </v-list-item-group>
-          </v-list>
-        </v-card-text>
-        <v-container style="height: 400px">
-          <v-row
-            v-show="loadingDrivers"
-            class="fill-height"
-            align-content="center"
-            justify="center"
-          >
-            <v-col class="text-subtitle-1 text-center" cols="12">
-              Please wait ...
-            </v-col>
-            <v-col cols="6">
-              <v-progress-linear
-                :active="loadingDrivers"
-                color="primary"
-                indeterminate
-                rounded
-                height="6"
-              ></v-progress-linear>
-            </v-col>
-          </v-row>
-        </v-container>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-
-          <v-btn
-            color="green darken-1"
-            text
-            @click="closeDriverDialog"
-          >
-            Close
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </div>
 </template>
 
@@ -256,15 +184,12 @@ export default {
       buses: [],
       depots: [],
       busTypes: [],
-      availableDrivers: [],
       isLoading: false,
       search: "",
       busDialog: false,
-      driversDialog: false,
       loadingDrivers: false,
       valid: true,
       id: null,
-      selectedBus: null,
       depotId: null,
       busTypeId: null,
       fleetNumber: '',
@@ -290,10 +215,9 @@ export default {
         { text: "ID", value: "id", align: "start", filterable: false },
         { text: "Nomor Armada", value: "fleet_number" },
         { text: "License", value: "license" },
-        { text: "Kategori", value: "busType.name" },
+        { text: "Kategori", value: "bus_type.name" },
         { text: "Capacity", value: "capacity" },
         { text: "Pricing Factor", value: "price_factor" },
-        { text: "Driver", value: "driver" },
         { text: "Depo Armada", value: "depot" },
         { text: "Created", value: "created_at" },
         { text: "Actions", value: "actions", sortable: false },
@@ -454,124 +378,6 @@ export default {
         .then(() => {
           //this.isDeleting = false;
         });
-    },
-    getDriverAssignmentColor(driver) {
-      if (!driver) return "error";
-      if (driver.status_id == 3) return "warning";
-      return "success";
-    },
-    getDriver(driver) {
-      if (driver) return driver.name;
-      else return "none";
-    },
-    formatSuspendedUntil(date) {
-      if (!date) return '-';
-      return new Date(date).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-    },
-    assignDriver(item) {
-      this.selectedBus = item;
-      this.driversDialog = true;
-      this.loadAvailableDrivers()
-    },
-    loadAvailableDrivers() {
-      this.loadingDrivers = true;
-      this.availableDrivers = [];
-      axios
-        .get('/buses/available-drivers')
-        .then((response) => {
-          this.availableDrivers = response.data;
-        })
-        .catch((error) => {
-          this.$notify({
-            title: "Error",
-            text: "Error while retrieving drivers",
-            type: 'error'
-          });
-          console.log(error);
-          this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
-        })
-        .then(() => {
-          this.loadingDrivers = false;
-        });
-    },
-    assignDriverToBus(driver) {
-      this.loadingDrivers = true;
-      axios
-        .post(`/buses/assign-driver`, {
-          bus_id: this.selectedBus.id,
-          driver_id: driver.id,
-        })
-        .then((response) => {
-          this.loadBuses();
-          this.$notify({
-            title: "Success",
-            text: "Driver assigned to bus!",
-            type: 'success'
-          });
-          this.$swal("Success", "Driver assigned to bus successfully", "success");
-        })
-        .catch((error) => {
-          const errorMsg = error.response?.data?.error || "Error while assigning driver to bus";
-          this.$notify({
-            title: "Error",
-            text: errorMsg,
-            type: 'error'
-          });
-          this.$swal("Error", errorMsg, "error");
-        })
-        .then(() => {
-          this.loadingDrivers = false;
-          this.closeDriverDialog();
-        });
-    },
-    unAssignDriver(item)
-    {
-      this.$swal
-        .fire({
-          title: "Un-assign driver from bus",
-          text: "Are you sure to un-assign the driver ' " + item.driver.name + " ' from the bus '" + item.license + "' ? You won't be able to revert this!",
-          icon: "error",
-          showCancelButton: true,
-          confirmButtonText: "Yes, delete it!",
-        })
-        .then((result) => {
-          if (result.isConfirmed) {
-            this.unAssignDriverFromBus(item);
-          }
-        });
-    },
-    unAssignDriverFromBus(item) {
-      this.isLoading = true;
-      axios
-        .post(`/buses/unassign-driver`, {
-          bus_id: item.id,
-        })
-        .then((response) => {
-          this.loadBuses();
-          this.$notify({
-            title: "Success",
-            text: "Driver unassigned from bus!",
-            type: 'success'
-          });
-          this.$swal("Success", "Driver unassigned from bus successfully", "success");
-        })
-        .catch((error) => {
-          this.$notify({
-            title: "Error",
-            text: "Error while un-assigning driver from bus",
-            type: 'error'
-          });
-          console.log(error);
-          this.$swal("Error", error.response?.data?.message || 'Terjadi kesalahan', "error");
-        })
-        .then(() => {
-          this.isLoading = false;
-        });
-    },
-    closeDriverDialog() {
-      this.driversDialog = false;
-      this.loadingDrivers = false;
-      this.availableDrivers = [];
     },
     updateSeats(seatConfig) {
       this.seatConfig = seatConfig;

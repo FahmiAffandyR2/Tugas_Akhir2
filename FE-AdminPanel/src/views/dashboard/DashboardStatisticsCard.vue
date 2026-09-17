@@ -17,7 +17,7 @@
           v-for="data in allCounts"
           :key="data.title"
           cols="6"
-          md="2"
+          md="3"
           class="d-flex align-center"
         >
           <v-avatar
@@ -72,11 +72,6 @@ export default {
           return {
             icon: 'mdi-bus-clock',
             color: 'warning',
-          }
-        case 'Routes':
-          return {
-            icon: 'mdi-road-variant',
-            color: 'error',
           }
         case 'Stops':
           return {

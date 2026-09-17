@@ -36,16 +36,6 @@
           </div>
         </template>
     
-        <template v-if="userType === 'drivers'" v-slot:item.bus="{ item }">
-          <v-chip
-            dark
-            @click="$emit('assignBus', item)"
-            :color="getBusAssignmentColor(item.bus)"
-          >
-            {{ item.bus != null? item.bus.license : 'No bus' }}
-          </v-chip>
-        </template>
-
         <template v-slot:item.created_at="{ item }">
           <small>{{ item.created_at | moment("LL") }}</small> -
           <small class="text-muted">{{ item.created_at | moment("LT") }}</small>
@@ -92,17 +82,7 @@
             </template>
             <span>{{item.status_id!=1? 'Activate' : 'Suspend' }}</span>
           </v-tooltip>
-          <v-tooltip v-if="tab!=2" bottom>
-            <template v-slot:activator="{ on, attrs }">
-              <v-icon v-if="userType === 'drivers' && item.bus" v-bind="attrs" v-on="on" small class="mr-2" @click="$emit('unassign-bus', item)">
-                mdi-fridge-industrial-off
-              </v-icon>
-              <v-icon v-else-if="userType === 'drivers'" v-bind="attrs" v-on="on" small class="mr-2" @click="$emit('assign-bus', item)">
-                mdi-bus
-              </v-icon>
-            </template>
-            <span>{{item.bus? 'Un-assign bus' : 'Assign bus' }}</span>
-          </v-tooltip>
+
         </template>
     </v-data-table>
   </div>
@@ -137,7 +117,6 @@ export default {
         { text: "ID", value: "id", align: "start", filterable: false },
         { text: "Name", value: "name" },
         { text: "Email", value: "email" },
-        { text: "Bus", value: "bus" },
         { text: "Status", value: "status_id" },
         { text: "Created", value: "created_at" },
         { text: "Actions", value: "actions", sortable: false },

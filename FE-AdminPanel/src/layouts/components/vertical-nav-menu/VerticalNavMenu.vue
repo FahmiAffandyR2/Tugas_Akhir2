@@ -43,10 +43,6 @@
         :icon="icons.mdiHomeOutline"
       ></nav-menu-link>
       <nav-menu-section-title title="USERS"></nav-menu-section-title>
-      <nav-menu-group
-        title="Users"
-        icon="mdi-account-group"
-      >
       <nav-menu-link
         title="Customers"
         :to="{ name: 'customers' }"
@@ -57,7 +53,6 @@
         :to="{ name: 'drivers' }"
         icon="mdi-account-tie-hat"
       ></nav-menu-link>
-      </nav-menu-group>
       <nav-menu-section-title title="SYSTEM SETUP"></nav-menu-section-title>
       <nav-menu-link
         title="Buses"
@@ -85,8 +80,8 @@
         icon="mdi-bus-stop"
       ></nav-menu-link>
       <nav-menu-link
-        title="Jadwal Perjalanan"
-        :to="{ name: 'trips' }"
+        title="Jadwal Mingguan"
+        :to="{ name: 'weekly-schedule' }"
         icon="mdi-bus-clock"
       ></nav-menu-link>
       <nav-menu-section-title title="LIVE"></nav-menu-section-title>

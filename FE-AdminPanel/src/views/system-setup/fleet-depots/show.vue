@@ -89,22 +89,8 @@
             <template v-slot:item.fleet_number="{ item }">
               <span class="font-weight-bold">#{{ item.fleet_number }}</span>
             </template>
-            <template v-slot:item.busType="{ item }">
-              <v-chip small outlined>{{ item.busType ? item.busType.name : '-' }}</v-chip>
-            </template>
-            <template v-slot:item.driver="{ item }">
-              <template v-if="item.driver">
-                <v-chip small color="blue lighten-5">
-                  <v-icon left small>mdi-account</v-icon>
-                  {{ item.driver.name }}
-                </v-chip>
-                <div v-if="item.driver.status_id == 3" class="mt-1">
-                  <v-alert type="warning" dense text class="mb-0" style="font-size:11px;">
-                    Ditangguhkan{{ item.driver.suspended_until ? ' sampai ' + formatDate(item.driver.suspended_until) : '' }}
-                  </v-alert>
-                </div>
-              </template>
-              <span v-else class="grey--text">Belum ditentukan</span>
+            <template v-slot:item.bus_type="{ item }">
+              <v-chip small outlined>{{ item.bus_type ? item.bus_type.name : '-' }}</v-chip>
             </template>
             <template v-slot:item.status="{ item }">
               <v-chip v-if="!item.is_active" color="error" small dark>
@@ -134,45 +120,13 @@
             </template>
             <template v-slot:item.actions="{ item }">
               <v-icon small class="mr-1" @click="goToBusEdit(item)" title="Edit bus">mdi-pencil</v-icon>
-              <v-icon v-if="!item.driver" small class="mr-1" color="primary" @click="assignDriver(item)" title="Assign driver">mdi-account-tie-hat</v-icon>
-              <v-icon v-else small class="mr-1" color="error" @click="unassignDriver(item)" title="Unassign driver">mdi-account-off</v-icon>
             </template>
           </v-data-table>
         </v-card-text>
       </v-card>
     </template>
 
-    <v-dialog v-model="driverDialog" max-width="400">
-      <v-card>
-        <v-card-title>
-          Pilih Driver untuk <strong class="ml-1">{{ selectedBus ? selectedBus.license : '' }}</strong>
-        </v-card-title>
-        <v-card-text>
-          <v-text-field v-model="driverSearch" outlined dense prepend-inner-icon="mdi-magnify" label="Cari driver..." class="mb-2" />
-          <v-list dense>
-            <v-list-item
-              v-for="driver in filteredDrivers"
-              :key="driver.id"
-              @click="confirmAssignDriver(driver)"
-            >
-              <v-list-item-icon><v-icon>mdi-account</v-icon></v-list-item-icon>
-              <v-list-item-content>
-                <v-list-item-title>{{ driver.name }}</v-list-item-title>
-                <v-list-item-subtitle>{{ driver.email }}</v-list-item-subtitle>
-              </v-list-item-content>
-            </v-list-item>
-          </v-list>
-          <div v-if="!filteredDrivers.length && !loadingDrivers" class="text-center py-4 grey--text">
-            Tidak ada driver tersedia
-          </div>
-          <v-progress-linear v-if="loadingDrivers" indeterminate color="primary" class="mt-2" />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn text @click="driverDialog = false">Tutup</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+
   </div>
 </template>
 
@@ -193,9 +147,8 @@ export default {
       headers: [
         { text: 'No. Armada', value: 'fleet_number' },
         { text: 'Plat Nomor', value: 'license' },
-        { text: 'Kategori', value: 'busType', sortable: false },
+        { text: 'Kategori', value: 'bus_type', sortable: false },
         { text: 'Kapasitas', value: 'capacity' },
-        { text: 'Driver', value: 'driver', sortable: false },
         { text: 'Status', value: 'status' },
         { text: 'Aktif', value: 'is_active', align: 'center' },
         { text: 'GPS Terakhir', value: 'last_gps', sortable: false },

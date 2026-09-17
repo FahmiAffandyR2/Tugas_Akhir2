@@ -27,6 +27,15 @@ class CharterBookingController extends Controller
 
     public function adminCancel(Request $request, CharterBooking $charterBooking)
     {
+        return DB::transaction(function() use ($request, $charterBooking) {
+            Bus::orderBy('id')->lockForUpdate()->get(['id']);
+            $booking = CharterBooking::whereKey($charterBooking->id)->lockForUpdate()->firstOrFail();
+            return $this->performAdminCancel($request, $booking);
+        });
+    }
+
+    private function performAdminCancel(Request $request, CharterBooking $charterBooking)
+    {
         if (in_array($charterBooking->status, ['cancelled', 'completed'], true)) {
             return response()->json(['message' => 'Booking tidak dapat dibatalkan.'], 422);
         }
@@ -35,24 +44,16 @@ class CharterBookingController extends Controller
             'reason' => 'nullable|string|max:1000',
         ]);
 
+        $this->clearOperationalTrips($charterBooking);
         $charterBooking->update([
             'status' => 'cancelled',
             'admin_notes' => $validated['reason'] ?? $charterBooking->admin_notes,
         ]);
 
-        $this->resetBusStatus($charterBooking);
-
-        if ($charterBooking->operational_planned_trip_id) {
-            $planned = PlannedTrip::find($charterBooking->operational_planned_trip_id);
-            if ($planned && !$planned->started_at) {
-                $planned->update(['status_id' => 0]);
-            }
-        }
-
         Notification::create([
             'user_id' => $charterBooking->customer_id,
             'message' => "Booking {$charterBooking->reference_code} dibatalkan oleh admin."
-                . ($validated['reason'] ? " Alasan: {$validated['reason']}" : ''),
+                . (!empty($validated['reason']) ? " Alasan: {$validated['reason']}" : ''),
             'seen' => 0,
         ]);
 
@@ -292,6 +293,15 @@ class CharterBookingController extends Controller
 
     public function adminUpdate(Request $request, CharterBooking $charterBooking)
     {
+        return DB::transaction(function () use ($request, $charterBooking) {
+            Bus::orderBy('id')->lockForUpdate()->get(['id']);
+            $booking = CharterBooking::whereKey($charterBooking->id)->lockForUpdate()->firstOrFail();
+            return $this->performAdminUpdate($request, $booking);
+        });
+    }
+
+    private function performAdminUpdate(Request $request, CharterBooking $charterBooking)
+    {
         $validated = $request->validate([
             'status' => ['required', Rule::in(self::STATUSES)],
             'quoted_price' => 'nullable|numeric|min:0|max:9999999999999',
@@ -328,11 +338,10 @@ class CharterBookingController extends Controller
             ], 422);
         }
 
-        $assignmentFields = ['departure_time', 'return_date', 'return_time'];
-        $hasAssignment = collect($assignmentFields)->contains(fn ($field) => !empty($validated[$field]));
-        $hasAssignment = $hasAssignment || !empty($validated['assignments']) || !empty($validated['bus_id']) || !empty($validated['driver_id']);
-        if ($hasAssignment && collect($assignmentFields)->contains(fn ($field) => empty($validated[$field]))) {
-            throw ValidationException::withMessages(['assignment' => 'Bus, driver, jam berangkat, serta tanggal dan jam kembali wajib dilengkapi bersama.']);
+        $hasAssignment = !empty($validated['assignments']) || !empty($validated['bus_id']) || !empty($validated['driver_id']);
+        // Dates always come from the booking; date changes use the reschedule action.
+        foreach (['departure_time', 'return_date', 'return_time'] as $field) {
+            $validated[$field] = $field === 'return_date' ? optional($charterBooking->return_date)->format('Y-m-d') : substr((string) $charterBooking->$field, 0, 5);
         }
 
         if ($hasAssignment) {
@@ -359,22 +368,13 @@ class CharterBookingController extends Controller
             $validated['payment_deadline'] = now()->addHours(24);
         }
 
-        $oldBusIds = $charterBooking->assignments->pluck('bus_id')->filter()->values()->all();
-        if ($charterBooking->bus_id) $oldBusIds[] = $charterBooking->bus_id;
-        $oldBusIds = array_unique($oldBusIds);
-
         $charterBooking->update($validated);
         if ($assignments !== null) {
             $charterBooking->assignments()->delete();
             foreach ($assignments as $assignment) {
                 $charterBooking->assignments()->create($assignment);
             }
-            Bus::whereIn('id', collect($assignments)->pluck('bus_id'))->update(['status' => 'on_trip']);
-            $newBusIds = collect($assignments)->pluck('bus_id')->values()->all();
-            $releasedBusIds = array_diff($oldBusIds, $newBusIds);
-            if (!empty($releasedBusIds)) {
-                Bus::whereIn('id', $releasedBusIds)->where('status', 'on_trip')->update(['status' => 'available']);
-            }
+
         }
         $this->syncOperationalTrip($charterBooking);
 
@@ -401,6 +401,42 @@ class CharterBookingController extends Controller
             'message' => 'Booking berhasil diperbarui.',
             'booking' => $this->freshBooking($charterBooking),
         ]);
+    }
+
+    public function weeklySchedule(Request $request)
+    {
+        $data = $request->validate(['start' => 'required|date_format:Y-m-d']);
+        $start = \Carbon\Carbon::parse($data['start']);
+        $end = $start->copy()->addDays(6);
+        return response()->json(['bookings' => CharterBooking::with(['customer:id,name', 'busType', 'assignments.bus', 'assignments.driver:id,name'])
+            ->whereDate('departure_date', '<=', $end->toDateString())
+            ->where(function($q) use ($start) { $q->whereDate('return_date', '>=', $start->toDateString())->orWhere(function($q) use ($start) { $q->whereNull('return_date')->whereDate('departure_date', '>=', $start->toDateString()); }); })
+            ->orderBy('departure_date')->orderBy('departure_time')->get()]);
+    }
+
+    public function reschedule(Request $request, CharterBooking $charterBooking)
+    {
+        $data = $request->validate([
+            'departure_date' => 'required|date_format:Y-m-d|after_or_equal:today', 'departure_time' => 'required|date_format:H:i',
+            'return_date' => 'required|date_format:Y-m-d|after_or_equal:departure_date', 'return_time' => 'required|date_format:H:i',
+        ]);
+        return DB::transaction(function() use ($data, $charterBooking) {
+            Bus::orderBy('id')->lockForUpdate()->get(['id']);
+            $booking = CharterBooking::whereKey($charterBooking->id)->lockForUpdate()->firstOrFail();
+            if (in_array($booking->status, ['cancelled', 'rejected', 'completed'], true) || PlannedTrip::where('charter_booking_id', $booking->id)->whereNotNull('started_at')->exists()) {
+                throw ValidationException::withMessages(['schedule' => 'Jadwal ini tidak dapat diubah.']);
+            }
+            if ($data['departure_date'] === $data['return_date'] && $data['return_time'] <= $data['departure_time']) {
+                throw ValidationException::withMessages(['return_time' => 'Waktu pulang harus setelah keberangkatan.']);
+            }
+            $booking->fill($data);
+            $assignments = $booking->assignments->map(fn($a) => ['bus_id' => $a->bus_id, 'driver_id' => $a->driver_id])->all();
+            if (!$assignments && $booking->bus_id && $booking->driver_id) $assignments = [['bus_id' => $booking->bus_id, 'driver_id' => $booking->driver_id]];
+            if ($assignments) $this->ensureAssignmentAvailable($booking, $data, $assignments);
+            $booking->save();
+            $this->syncOperationalTrip($booking);
+            return response()->json(['booking' => $this->freshBooking($booking), 'message' => 'Tanggal booking dan seluruh jadwal unit sudah diperbarui.']);
+        });
     }
 
     public function assignmentOptions()
@@ -544,6 +580,15 @@ class CharterBookingController extends Controller
 
     public function cancelRejectedPayment(Request $request, CharterBooking $charterBooking)
     {
+        return DB::transaction(function() use ($request, $charterBooking) {
+            Bus::orderBy('id')->lockForUpdate()->get(['id']);
+            $booking = CharterBooking::whereKey($charterBooking->id)->lockForUpdate()->firstOrFail();
+            return $this->performCancelRejectedPayment($request, $booking);
+        });
+    }
+
+    private function performCancelRejectedPayment(Request $request, CharterBooking $charterBooking)
+    {
         if ((int) $charterBooking->customer_id !== (int) $request->user()->id) {
             abort(403, 'Booking bukan milik customer ini.');
         }
@@ -560,6 +605,7 @@ class CharterBookingController extends Controller
             ], 422);
         }
 
+        $this->clearOperationalTrips($charterBooking);
         $charterBooking->update(['status' => 'cancelled']);
         $this->resetBusStatus($charterBooking);
 
@@ -578,6 +624,15 @@ class CharterBookingController extends Controller
     }
 
     public function customerCancel(Request $request, CharterBooking $charterBooking)
+    {
+        return DB::transaction(function() use ($request, $charterBooking) {
+            Bus::orderBy('id')->lockForUpdate()->get(['id']);
+            $booking = CharterBooking::whereKey($charterBooking->id)->lockForUpdate()->firstOrFail();
+            return $this->performCustomerCancel($request, $booking);
+        });
+    }
+
+    private function performCustomerCancel(Request $request, CharterBooking $charterBooking)
     {
         if ((int) $charterBooking->customer_id !== (int) $request->user()->id) {
             abort(403, 'Booking bukan milik customer ini.');
@@ -601,6 +656,7 @@ class CharterBookingController extends Controller
             'reason' => 'nullable|string|max:1000',
         ]);
 
+        $this->clearOperationalTrips($charterBooking);
         $charterBooking->update([
             'status' => 'cancelled',
             'admin_notes' => $validated['reason'] ?? $charterBooking->admin_notes,
@@ -806,7 +862,7 @@ class CharterBookingController extends Controller
             throw ValidationException::withMessages(['assignment' => 'Driver yang dipilih tidak boleh sama.']);
         }
 
-        $buses = Bus::whereIn('id', $busIds)->where('is_active', true)->get();
+        $buses = Bus::whereIn('id', $busIds)->where('is_active', true)->whereIn('status', ['available', 'on_trip'])->get();
         if ($buses->count() !== count($busIds)) {
             throw ValidationException::withMessages(['assignment' => 'Ada bus yang tidak aktif atau tidak valid.']);
         }
@@ -825,55 +881,41 @@ class CharterBookingController extends Controller
             throw ValidationException::withMessages(['assignment' => 'Ada driver yang tidak aktif atau tidak valid.']);
         }
 
-        $start = $departureDate;
-        $end = $data['return_date'];
-        $conflicts = CharterBooking::where('id', '!=', $booking->id)
-            ->whereNotIn('status', ['rejected', 'cancelled'])
-            ->where(function ($query) use ($start, $end) {
-                $query->whereDate('departure_date', '<=', $end)
-                    ->where(function ($inner) use ($start) {
-                        $inner->whereDate('return_date', '>=', $start)->orWhereNull('return_date');
-                    });
-            });
-
-        if ((clone $conflicts)->whereIn('bus_id', $busIds)->exists()
-            || CharterBookingAssignment::whereIn('bus_id', $busIds)
-                ->whereHas('booking', function ($query) use ($booking, $start, $end) {
-                    $query->where('id', '!=', $booking->id)
-                        ->whereNotIn('status', ['rejected', 'cancelled', 'completed'])
-                        ->whereDate('departure_date', '<=', $end)
-                        ->where(function ($inner) use ($start) {
-                            $inner->whereDate('return_date', '>=', $start)->orWhereNull('return_date');
-                        });
-                })->exists()) {
-            throw ValidationException::withMessages(['bus_id' => 'Bus sudah dipakai oleh booking lain pada rentang tanggal tersebut.']);
+        $start = \Carbon\Carbon::parse($departureDate . ' ' . $data['departure_time']);
+        $end = \Carbon\Carbon::parse($data['return_date'] . ' ' . $data['return_time']);
+        $conflicts = CharterBooking::with('assignments')->where('id', '!=', $booking->id)
+            ->whereNotIn('status', ['rejected', 'cancelled', 'completed'])
+            ->whereDate('departure_date', '<=', $end->toDateString())
+            ->where(function($q) use ($start) { $q->whereDate('return_date', '>=', $start->toDateString())->orWhereNull('return_date'); })->get();
+        foreach ($conflicts as $other) {
+            $otherStart = \Carbon\Carbon::parse($other->departure_date->format('Y-m-d') . ' ' . ($other->departure_time ?: '00:00'));
+            $otherEnd = \Carbon\Carbon::parse(($other->return_date ?? $other->departure_date)->format('Y-m-d') . ' ' . ($other->return_time ?: '23:59'));
+            if ($otherStart >= $end || $otherEnd <= $start) continue;
+            $otherBusIds = $other->assignments->pluck('bus_id')->push($other->bus_id)->filter()->all();
+            $otherDriverIds = $other->assignments->pluck('driver_id')->push($other->driver_id)->filter()->all();
+            if (array_intersect($busIds, $otherBusIds) || array_intersect($driverIds, $otherDriverIds)) {
+                throw ValidationException::withMessages(['assignment' => 'Bus atau driver berbenturan dengan booking ' . $other->reference_code . '.']);
+            }
         }
-        if ((clone $conflicts)->whereIn('driver_id', $driverIds)->exists()
-            || CharterBookingAssignment::whereIn('driver_id', $driverIds)
-                ->whereHas('booking', function ($query) use ($booking, $start, $end) {
-                    $query->where('id', '!=', $booking->id)
-                        ->whereNotIn('status', ['rejected', 'cancelled', 'completed'])
-                        ->whereDate('departure_date', '<=', $end)
-                        ->where(function ($inner) use ($start) {
-                            $inner->whereDate('return_date', '>=', $start)->orWhereNull('return_date');
-                        });
-                })->exists()) {
-            throw ValidationException::withMessages(['driver_id' => 'Driver sudah memiliki booking lain pada rentang tanggal tersebut.']);
-        }
-
-        $plannedConflict = PlannedTrip::whereBetween('planned_date', [$start, $end])
-            ->where(function ($query) use ($busIds, $driverIds) {
-                $query->whereIn('bus_id', $busIds)->orWhereIn('driver_id', $driverIds);
-            });
-        if ($booking->operational_planned_trip_id) $plannedConflict->where('id', '!=', $booking->operational_planned_trip_id);
-        if ($plannedConflict->exists()) {
-            throw ValidationException::withMessages(['assignment' => 'Bus atau driver berbenturan dengan jadwal perjalanan reguler.']);
+        $regularTrips = PlannedTrip::with('trip')->whereNull('charter_booking_id')->whereNull('ended_at')
+            ->whereBetween('planned_date', [$start->copy()->subDay()->toDateString(), $end->toDateString()])
+            ->where(function($q) use ($busIds, $driverIds) { $q->whereIn('bus_id', $busIds)->orWhereIn('driver_id', $driverIds); })->get();
+        foreach ($regularTrips as $planned) {
+            $day = substr((string) $planned->planned_date, 0, 10);
+            $regularStart = \Carbon\Carbon::parse($day . ' ' . (optional($planned->trip)->first_stop_time ?: '00:00'));
+            $regularEnd = \Carbon\Carbon::parse($day . ' ' . (optional($planned->trip)->last_stop_time ?: '23:59'));
+            if ($regularEnd <= $regularStart) $regularEnd->addDay();
+            if ($regularStart < $end && $regularEnd > $start) {
+                throw ValidationException::withMessages(['assignment' => 'Bus atau driver berbenturan dengan jadwal perjalanan reguler.']);
+            }
         }
     }
 
     private function syncOperationalTrip(CharterBooking $booking): void
     {
         $booking->refresh();
+        if (in_array($booking->status, ['cancelled', 'rejected'], true)) { $this->clearOperationalTrips($booking); return; }
+        if ($booking->status !== 'approved') return;
         if ($booking->payment_status !== 'paid' || !$booking->departure_time || !$booking->return_date || !$booking->return_time) return;
 
         \Illuminate\Support\Facades\DB::transaction(function () use ($booking) {
@@ -902,27 +944,23 @@ class CharterBookingController extends Controller
 
         if (empty($allAssignments)) return;
 
-        // Check if already synced
-        if ($booking->operational_planned_trip_id) {
-            $existingTrips = \App\Models\PlannedTrip::where('route_id', optional($booking->operationalTrip)->route_id ?? 0)->get();
-            if ($existingTrips->count() === count($allAssignments)) {
-                foreach ($existingTrips as $pt) {
-                    if (!$pt->started_at) {
-                        $match = collect($allAssignments)->first(function ($a) use ($pt) {
-                            return $a['bus_id'] == $pt->bus_id && $a['driver_id'] == $pt->driver_id;
-                        });
-                        if ($match) {
-                            $pt->update(['planned_date' => $booking->departure_date]);
-                            $pt->trip()->update(['first_stop_time' => $booking->departure_time, 'last_stop_time' => $booking->return_time]);
-                        }
-                    }
-                }
-                return;
+        $existingTrips = PlannedTrip::where('charter_booking_id', $booking->id)->orderBy('id')->get();
+        if ($existingTrips->isNotEmpty()) {
+            if ($existingTrips->contains(fn($trip) => (bool) $trip->started_at)) {
+                throw ValidationException::withMessages(['assignment' => 'Penugasan atau tanggal tidak dapat diubah setelah perjalanan dimulai.']);
             }
+            foreach ($allAssignments as $index => $assignment) {
+                $planned = $existingTrips->get($index);
+                if (!$planned) break;
+                $planned->update(['planned_date' => $booking->departure_date, 'bus_id' => $assignment['bus_id'], 'driver_id' => $assignment['driver_id']]);
+                $planned->trip()->update(['effective_date' => $booking->departure_date, 'first_stop_time' => $booking->departure_time, 'last_stop_time' => $booking->return_time, 'driver_id' => $assignment['driver_id']]);
+            }
+            if ($existingTrips->count() === count($allAssignments)) return;
+            throw ValidationException::withMessages(['assignment' => 'Jumlah unit jadwal tidak sesuai booking.']);
         }
 
         // Create route
-        $route = \App\Models\Route::create(['name' => "Charter {$booking->reference_code}: {$booking->origin} - {$booking->destination}"]);
+        $route = \App\Models\Route::create(['name' => "Charter {$booking->reference_code}"]);
 
         $firstPlannedId = null;
         foreach ($allAssignments as $index => $assignment) {
@@ -934,7 +972,7 @@ class CharterBookingController extends Controller
             ]);
             $seatsPerBus = (int) ceil(($booking->passenger_count ?? 0) / count($allAssignments));
             $planned = PlannedTrip::create([
-                'channel' => $channel, 'trip_id' => $trip->id, 'route_id' => $route->id,
+                'channel' => $channel, 'trip_id' => $trip->id, 'route_id' => $route->id, 'charter_booking_id' => $booking->id,
                 'planned_date' => $booking->departure_date, 'driver_id' => $assignment['driver_id'],
                 'bus_id' => $assignment['bus_id'], 'reserved_seats' => $seatsPerBus,
             ]);
@@ -948,6 +986,20 @@ class CharterBookingController extends Controller
                 $booking->update(['operational_planned_trip_id' => $firstPlannedId]);
             }
         });
+    }
+
+    private function clearOperationalTrips(CharterBooking $booking): void
+    {
+        $trips = PlannedTrip::where('charter_booking_id', $booking->id)->get();
+        if ($trips->contains(fn($trip) => $trip->started_at && !$trip->ended_at)) {
+            throw ValidationException::withMessages(['status' => 'Perjalanan sedang berjalan. Selesaikan perjalanan sebelum membatalkan booking.']);
+        }
+        $booking->update(['operational_planned_trip_id' => null]);
+        foreach ($trips as $trip) {
+            if (!$trip->started_at) { $trip->trip()->update(['status_id' => 0]); $trip->delete(); }
+        }
+        $booking->assignments()->delete();
+        $booking->update(['bus_id' => null, 'driver_id' => null, 'assigned_at' => null]);
     }
 
     private function freshBooking(CharterBooking $booking): CharterBooking
@@ -966,7 +1018,7 @@ class CharterBookingController extends Controller
         $busIds = array_unique($busIds);
 
         if (!empty($busIds)) {
-            Bus::whereIn('id', $busIds)->update(['status' => 'available']);
+            Bus::whereIn('id', $busIds)->where('status', 'on_trip')->whereNotIn('id', PlannedTrip::whereNotNull('started_at')->whereNull('ended_at')->whereNotNull('bus_id')->select('bus_id'))->update(['status' => 'available']);
         }
 
         $driverIds = [];
@@ -978,7 +1030,7 @@ class CharterBookingController extends Controller
         $driverIds = array_unique($driverIds);
 
         if (!empty($driverIds)) {
-            \App\Models\User::whereIn('id', $driverIds)->update(['status' => 'available']);
+            \App\Models\User::whereIn('id', $driverIds)->whereNotIn('id', PlannedTrip::whereNotNull('started_at')->whereNull('ended_at')->whereNotNull('driver_id')->select('driver_id'))->update(['status' => 'available']);
         }
     }
 
@@ -1027,7 +1079,7 @@ class CharterBookingController extends Controller
         $plannedBusCount = PlannedTrip::whereBetween('planned_date', [$departureDate, $returnDate])
             ->whereNotNull('bus_id')
             ->whereIn('bus_id', Bus::where('bus_type_id', $busType->id)->where('is_active', true)->select('id'))
-            ->whereNotIn('id', CharterBooking::whereNotNull('operational_planned_trip_id')->select('operational_planned_trip_id'))
+            ->whereNull('charter_booking_id')
             ->distinct('bus_id')
             ->count('bus_id');
 

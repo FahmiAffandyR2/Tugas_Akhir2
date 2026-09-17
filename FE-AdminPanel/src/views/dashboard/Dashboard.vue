@@ -15,22 +15,10 @@
       sm="12"
     >
       <v-row class="match-height">
+
         <v-col
           cols="12"
-          sm="4"
-        >
-          <statistics-card-vertical
-            :change="totalDriversEarnings.change"
-            :color="totalDriversEarnings.color"
-            :icon="totalDriversEarnings.icon"
-            :statistics="totalDriversEarnings.amount"
-            :stat-title="totalDriversEarnings.statTitle"
-            :subtitle="totalDriversEarnings.subtitle"
-          ></statistics-card-vertical>
-        </v-col>
-        <v-col
-          cols="12"
-          sm="4"
+          sm="6"
         >
           <statistics-card-vertical
             :change="totalRefunds.change"
@@ -43,7 +31,7 @@
         </v-col>
         <v-col
           cols="12"
-          sm="4"
+          sm="6"
         >
           <statistics-card-vertical
             :change="totalWarnings.change"
@@ -158,7 +146,7 @@
 
 <script>
 // eslint-disable-next-line object-curly-newline
-import { mdiCurrencyUsd, mdiCloseOctagonOutline, mdiAlertOctagonOutline } from '@mdi/js'
+import { mdiCloseOctagonOutline, mdiAlertOctagonOutline } from '@mdi/js'
 import StatisticsCardVertical from '@/components/statistics-card/StatisticsCardVertical.vue'
 import axios from 'axios'
 
@@ -187,12 +175,6 @@ export default {
       bestTripsColors: [
         'success', 'error', 'warning', 'secondary', 'error',
       ],
-      totalDriversEarnings: {
-        statTitle: 'Drivers Earnings',
-        icon: mdiCurrencyUsd,
-        color: 'info',
-        amount: '',
-      },
       totalRefunds: {
         statTitle: 'Total Refunds',
         icon: mdiCloseOctagonOutline,
@@ -217,10 +199,6 @@ export default {
           total: '',
         },
         {
-          title: 'Routes',
-          total: '',
-        },
-        {
           title: 'Stops',
           total: '',
         },
@@ -241,15 +219,13 @@ export default {
       axios
         .get(`/dashboard/all`)
         .then((response) => {
-          this.totalDriversEarnings.amount = response.data.totalDriversEarnings;
           this.totalRefunds.amount = response.data.totalRefunds;
           this.totalWarnings.amount = response.data.totalComplaints;
           this.totalAdminEarnings = response.data.totalAdminEarnings;
           this.allCounts[0].total = response.data.totalCustomers;
           this.allCounts[1].total = response.data.totalDrivers;
-          this.allCounts[2].total = response.data.totalRoutes;
-          this.allCounts[3].total = response.data.totalStops;
-          this.allCounts[4].total = response.data.totalTrips;
+          this.allCounts[2].total = response.data.totalStops;
+          this.allCounts[3].total = response.data.totalTrips;
           this.bestTrips = response.data.bestTrips;
           //merge bestTrips with bestTripsColors
           this.bestTrips.forEach((item, index) => {

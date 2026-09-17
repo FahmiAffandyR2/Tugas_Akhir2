@@ -60,7 +60,8 @@ class GpsTrackingController extends Controller
         ]);
 
         $user = $request->user();
-        $bus = Bus::where('driver_id', $user->id)->first();
+        $activeTrip = \App\Models\PlannedTrip::where('driver_id', $user->id)->whereNotNull('started_at')->whereNull('ended_at')->latest('started_at')->first();
+        $bus = $activeTrip ? Bus::find($activeTrip->bus_id) : null;
 
         if (!$bus) {
             return response()->json(['error' => 'No bus assigned'], 404);

@@ -301,7 +301,7 @@ class TripController extends Controller
         // Optimized query: only load running trips with minimal eager loads
         $runningTrips = \App\Models\PlannedTrip::whereNotNull('started_at')
             ->whereNull('ended_at')
-            ->with(['trip:id,route_id,first_stop_time,last_stop_time', 'trip.route:id,name', 'driver:id,name', 'bus:id,license,fleet_number'])
+            ->with(['trip:id,route_id,first_stop_time,last_stop_time', 'trip.route:id,name', 'driver:id,name', 'bus:id,license,fleet_number,current_lat,current_lng,last_gps_at'])
             ->orderBy('planned_date', 'desc')
             ->get();
 
@@ -1308,12 +1308,28 @@ class TripController extends Controller
 
         DB::beginTransaction();
         try {
+            // Use the same lock order as booking assignment/rescheduling.
+            \App\Models\Bus::orderBy('id')->lockForUpdate()->get(['id']);
+            $planned_trip = \App\Models\PlannedTrip::whereKey($planned_trip_id)->lockForUpdate()->first();
+            if (!$planned_trip || $planned_trip->driver_id != $user_id) {
+                DB::rollBack();
+                return response()->json(['message' => 'Jadwal sudah dibatalkan atau penugasan berubah.'], 422);
+            }
             $mode = $request->mode; // 1: start, 0: end
             $eventTime = Carbon::now();
             if ($mode == 1) {
                 if ($planned_trip->started_at || $planned_trip->ended_at) {
                     DB::rollback();
                     return response()->json(['message' => 'Trip has already been started or completed.'], 422);
+                }
+                $busy = \App\Models\PlannedTrip::whereNotNull('started_at')->whereNull('ended_at')
+                    ->where(function ($query) use ($planned_trip, $user_id) {
+                        $query->where('driver_id', $user_id);
+                        if ($planned_trip->bus_id) $query->orWhere('bus_id', $planned_trip->bus_id);
+                    })->exists();
+                if ($busy) {
+                    DB::rollBack();
+                    return response()->json(['message' => 'Bus atau driver masih menjalankan perjalanan lain.'], 422);
                 }
                 $planned_trip->started_at = $eventTime;
                 // Set bus status to on_trip when trip starts
@@ -1329,17 +1345,9 @@ class TripController extends Controller
             }
             $planned_trip->save();
             if ($mode == 0) {
-                $charterBooking = \App\Models\CharterBooking::where('operational_planned_trip_id', $planned_trip->id)->first();
-                if ($charterBooking) {
+                $charterBooking = $planned_trip->charterBooking;
+                if ($charterBooking && !\App\Models\PlannedTrip::where('charter_booking_id', $charterBooking->id)->whereNull('ended_at')->exists()) {
                     $charterBooking->update(['status' => 'completed']);
-                    // Reset bus status to available
-                    $busIds = [];
-                    if ($charterBooking->bus_id) $busIds[] = $charterBooking->bus_id;
-                    $assignmentBusIds = $charterBooking->assignments->pluck('bus_id')->toArray();
-                    $busIds = array_unique(array_merge($busIds, $assignmentBusIds));
-                    if (!empty($busIds)) {
-                        \App\Models\Bus::whereIn('id', $busIds)->update(['status' => 'available']);
-                    }
                 }
                 // Also reset bus status for regular trips (non-charter)
                 if ($planned_trip->bus_id) {

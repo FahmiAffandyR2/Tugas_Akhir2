@@ -50,6 +50,6 @@ class PlannedTrip extends Model
 
     public function charterBooking()
     {
-        return $this->hasOne(CharterBooking::class, 'operational_planned_trip_id');
+        return $this->belongsTo(CharterBooking::class, 'charter_booking_id');
     }
 }

@@ -5,6 +5,7 @@
         <v-icon color="primary" class="mr-2">mdi-clipboard-text-clock-outline</v-icon>
         <span>Booking Bus Pariwisata</span>
         <v-spacer />
+        <v-btn text color="primary" to="/jadwal-mingguan">Jadwal Mingguan</v-btn>
         <v-chip color="orange lighten-5" text-color="orange darken-3">{{ waitingCount }} menunggu</v-chip>
       </v-card-title>
 
@@ -156,7 +157,7 @@
 
           <v-alert v-if="selected.payment_deadline && selected.payment_status !== 'paid' && ['quote_sent', 'approved'].includes(selected.status)" type="warning" text dense class="mt-5">
             <strong>Batas waktu pembayaran:</strong> {{ formatDateTime(selected.payment_deadline) }}
-            <span v-if="isPaymentOverdue(selected)"> — <strong class="error--text">Sudah lewat</strong></span>
+            <span v-if="isPaymentOverdue(selected)"> â€” <strong class="error--text">Sudah lewat</strong></span>
           </v-alert>
 
           <v-alert v-if="selected.operational_planned_trip_id" type="info" text class="mt-5">
@@ -228,15 +229,7 @@
                     </v-row>
                   </v-card>
                 </v-col>
-                <v-col cols="12" sm="4">
-                  <v-text-field v-model="edit.departure_time" type="time" outlined label="Jam berangkat" />
-                </v-col>
-                <v-col cols="12" sm="4">
-                  <v-text-field v-model="edit.return_date" type="date" outlined label="Tanggal kembali" :min="selected.departure_date" />
-                </v-col>
-                <v-col cols="12" sm="4">
-                  <v-text-field v-model="edit.return_time" type="time" outlined label="Jam kembali" />
-                </v-col>
+                <v-col cols="12"><v-alert text dense type="info">Tanggal dan jam otomatis mengikuti booking customer. Perubahan tanggal dilakukan melalui Jadwal Mingguan.</v-alert></v-col>
               </template>
             </v-row>
           </v-form>
@@ -383,7 +376,7 @@ export default {
       return 'Lengkapi persetujuan booking terlebih dahulu.';
     },
     busOptions() {
-      return this.buses.map(bus => ({
+      return this.buses.filter(bus => (!this.selected || Number(bus.bus_type_id) === Number(this.selected.bus_type_id)) && ['available', 'on_trip'].includes(bus.status)).map(bus => ({
         value: bus.id,
         text: `${bus.fleet_number ? `#${bus.fleet_number} - ` : ''}${bus.license} - ${bus.bus_type ? bus.bus_type.name : `${bus.capacity} kursi`} - ${bus.depot ? bus.depot.name : 'Tanpa depo'}`,
       }));
@@ -409,6 +402,7 @@ export default {
       try {
         const response = await axios.get('/charter-bookings/admin');
         this.bookings = response.data.bookings || [];
+        if (this.$route.query.booking && !this.dialog) { const requested = this.bookings.find(b => String(b.id) === String(this.$route.query.booking)); if (requested) this.openBooking(requested); }
       } catch (error) {
         this.notifyError(error, 'Booking tidak dapat dimuat.');
       } finally {

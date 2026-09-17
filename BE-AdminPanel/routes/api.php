@@ -279,6 +279,8 @@ Route::group(['prefix' => 'charter-bookings', 'middleware' => ['auth:sanctum']],
   Route::post('/{charterBooking}/cancel-rejected-payment', [Api\CharterBookingController::class, 'cancelRejectedPayment'])->middleware('customer');
   Route::post('/{charterBooking}/cancel', [Api\CharterBookingController::class, 'customerCancel'])->middleware('customer');
   Route::get('/admin', [Api\CharterBookingController::class, 'adminIndex'])->middleware('admin');
+  Route::get('/weekly-schedule', [Api\CharterBookingController::class, 'weeklySchedule'])->middleware('admin');
+  Route::put('/{charterBooking}/schedule', [Api\CharterBookingController::class, 'reschedule'])->middleware('admin');
   Route::get('/admin-assignment-options', [Api\CharterBookingController::class, 'assignmentOptions'])->middleware('admin');
   Route::put('/admin/{charterBooking}', [Api\CharterBookingController::class, 'adminUpdate'])->middleware('admin');
   Route::post('/admin/{charterBooking}/payment-review', [Api\CharterBookingController::class, 'reviewPayment'])->middleware('admin');

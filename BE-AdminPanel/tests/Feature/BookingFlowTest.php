@@ -30,7 +30,7 @@ class BookingFlowTest extends TestCase
             $table->id(); $table->unsignedBigInteger('bus_type_id'); $table->boolean('is_active')->default(true); $table->string('status')->default('available');
         });
         Schema::create('planned_trips', function (Blueprint $table) {
-            $table->id(); $table->unsignedBigInteger('bus_id')->nullable(); $table->date('planned_date');
+            $table->id(); $table->unsignedBigInteger('bus_id')->nullable(); $table->unsignedBigInteger('charter_booking_id')->nullable(); $table->date('planned_date');
         });
         Schema::create('users', function (Blueprint $table) { $table->id(); $table->integer('role'); });
         Schema::create('charter_bookings', function (Blueprint $table) {
